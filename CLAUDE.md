@@ -1,0 +1,81 @@
+# Proyecto final — Aprendizaje de Máquina (1INF02, PUCP, 2026-2)
+
+Contexto para Claude Code. Resume el análisis y las decisiones tomadas hasta el 6 nov 2026.
+
+## Enunciado (resumen)
+- Dataset de un sistema de transporte inteligente (STI) de buses de Cusco, entregado por los docentes (Beltrán, Alvarez).
+- Plantear una tarea supervisada (clasificación/regresión) o no supervisada (clustering); comparar varios algoritmos con un diseño experimental, métricas y reproducibilidad.
+- Herramientas: scikit-learn, PyTorch o TensorFlow. Entrega: paper (formato IEEE recomendado), código (.ipynb/.py, idealmente en GitHub) y demo interactiva (recomendada).
+- Fechas: E1 propuesta + antecedentes (6 nov) · E2 implementación y evaluación (20 nov) · presentación final + paper (27 nov, 15 min + 5 de preguntas).
+
+## Datos
+### `Times.csv` — 4 707 filas, una por vuelta de un bus
+- Columnas: `id, lap, date, time, start_time, end_time, difference_time, vehicle_id_id`.
+- `start_time`, `end_time` y `difference_time` son arreglos tipo Postgres `{a,b,...}` con **18 valores** (los 18 puntos de control, P1..P18).
+- `start_time` = hora programada, `end_time` = hora real, `difference_time` = `trunc((real − programada) / 60)` en minutos (negativo = adelantado).
+- Periodo: 6 ene – 1 feb 2025 (27 días); 45 vehículos; vueltas 1–8 por día.
+- 4 plantillas de horario (duración programada 147 / 161 / 168 / 170 min); la de 161 min cubre el 65 % de las vueltas.
+
+### `Monitoring.csv` — 1 630 431 filas, una por posición GPS
+- Columnas: `id, date, time, lap, latitude, longitude, speed (km/h), bearing, vehicle_id_id`.
+- Periodo: 1 ene – 1 feb 2025; 45 vehículos; intervalo de muestreo mediano 25 s (p90 = 68 s).
+- `lap = 0` (2,9 %) = bus fuera de vuelta (terminal o fuera de servicio).
+
+### Unión
+- Leer `vehicle_id_id` como **string** (tiene ceros a la izquierda: "05").
+- Unir por vehículo + fecha + vuelta; para ubicar cada punto de control: `merge_asof` de la hora real (`end_time`) con el GPS del mismo vehículo, tolerancia de 60 s → empareja el 99,2 % de los pasos; la vuelta coincide en el 99,1 %.
+- Es **una sola ruta circular**: sale del extremo este (P1 ≈ −13.5552, −71.8568), va al oeste hasta P10 (≈ −13.5543, −71.9908) y vuelve al este. Coordenadas medianas por punto en `scripts/geo.py` → `cp.csv`.
+
+### Problemas de calidad y reglas de limpieza
+- Pasos no registrados: `-` en `difference_time` y `00:00:00` en `end_time`. El 35 % de las vueltas tiene al menos uno; P17 falta en el 27 %. → NaN + indicador; nunca imputar la variable objetivo.
+- Cruces de medianoche: 156 celdas con |diff| > 60 min (hasta −1 052). → marcar como NaN.
+- 148 vueltas con horario programado no creciente. → excluir.
+- GPS: filtrar `lap ≥ 1` y puntos lejos de la ruta.
+- Tras la limpieza: 4 559 vueltas; 4 004 con P18 observado.
+
+## Hallazgos del EDA
+- El retraso crece a lo largo de la ruta: mediana 0 / −1 min en P1–P5, de 1 a 3 min desde P14; p75 en P18 = 6 min.
+- En P18: 38 % llega > 3 min tarde, 17 % llega ≥ 2 min adelantado.
+- Efectos de la hora del día y del día de la semana (los sábados hay más retraso).
+
+## Propuesta actual (entregable 1, ya redactado)
+Documento de Claude Docs: https://claude.ai/artifact/MTnxNoyEsm5XcLCbxtvV6A
+- **Tarea principal (regresión):** desde el punto k, predecir el retraso en los puntos k+1..18 (experimento base: k = 10 → P18).
+- **Complementos:** clasificación adelantado (≤ −2) / puntual (−1..3) / retrasado (≥ 4); K-means/GMM sobre el perfil de 18 retrasos (+ PCA).
+- **Modelos:** líneas base (retraso cero, persistencia, media histórica por hora), Ridge/Lasso, SVR, Random Forest, XGBoost/LightGBM, MLP, LSTM sobre la secuencia de tramos. Interpretación con permutación + SHAP.
+- **Validación temporal por día:** entrenamiento 6–21 ene, validación 22–26 ene, prueba 27 ene – 1 feb 2025; *forward-chaining* dentro del entrenamiento.
+- **Métricas:** MAE (principal), RMSE, R², % con |error| ≤ 2 min; F1 macro / exactitud balanceada; silueta / Davies-Bouldin. Prueba de Wilcoxon + IC por bootstrap.
+
+## Resultados preliminares (`scripts/feas.py`, solo Times, sin GPS ni ajuste de hiperparámetros)
+Predicción de P18 desde P1–P10 + hora, día, vuelta, plantilla, vehículo. Train+val 3 082 vueltas, test 922.
+
+| Modelo | MAE | RMSE | R² |
+|---|---|---|---|
+| Retraso cero | 5,15 | 8,21 | −0,06 |
+| Media histórica por hora | 4,28 | 6,02 | 0,43 |
+| Persistencia | 3,99 | 5,97 | 0,44 |
+| Ridge | 3,58 | 5,00 | 0,61 |
+| HistGradientBoosting | 2,85 | 4,22 | 0,72 |
+| Random Forest | 2,85 | 4,17 | 0,73 |
+
+- Clasificación (HistGB): F1 macro 0,68.
+- K-means (k = 3) sobre 3 069 perfiles completos: silueta 0,60; grupos normal (2 470), ~13 min tarde (367), ~18 min adelantado (232).
+
+## Discusión abierta: diferenciarnos de otros grupos
+Todos los grupos tienen el mismo dataset y `difference_time` es la etiqueta obvia, así que es probable que varios propongan predecir el retraso o clasificar la puntualidad. Alternativas consideradas (la etiqueta hay que construirla):
+- **Intervalo entre buses / apelotonamiento:** diferencia de hora real entre buses consecutivos en el mismo punto de control. ← candidata fuerte
+- **Tiempo detenido en paraderos** desde el GPS (velocidad ≈ 0). ← candidata fuerte
+- Perfiles de conducción por vehículo (clustering; "correteo" = adelantarse para ganar pasajeros).
+- Reconstruir pasos no registrados usando el GPS.
+- Detectar paraderos reales con DBSCAN; detectar vueltas anómalas.
+- Identificar el vehículo por su forma de manejar.
+
+Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutilizando el pipeline; (2) mantener el retraso y diferenciar con variables del GPS + clustering de perfiles de conducción. **Decisión pendiente.**
+
+## Scripts (`scripts/`)
+Las rutas a los CSV están fijas (`/mnt/user-data/...`); hay que cambiarlas a las rutas locales.
+- `eda.py`, `eda2.py`: exploración inicial de ambos archivos.
+- `clean.py`: limpieza + primera prueba de modelos.
+- `geo.py`: une puntos de control con el GPS y obtiene sus coordenadas (`cp.csv`, `sample.csv`).
+- `more.py`: cuantiles por punto, prueba de K-means y mapa de la ruta (`ruta.png`).
+- `feas.py`: prueba de factibilidad final con la partición propuesta.
