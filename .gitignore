@@ -1,1 +1,12 @@
 Dataset/Monitoring.csv
+
+# Datos derivados (se regeneran con src/01_preprocesamiento.py)
+data/
+# Auxiliares de LaTeX
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+__pycache__/
