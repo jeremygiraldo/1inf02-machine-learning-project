@@ -97,6 +97,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
   - R² por subgrupo: plantilla 168 R² 0,30 (sd 5,1) frente a sábado 0,73 (sd 11,5) → el R² depende de la varianza; la métrica principal es el MAE.
   - Semillas: la búsqueda de HistGB da 3,375–3,386 y RF 3,526–3,553 → estable.
   - Tablas con `es-tabla` (antes salían como "Cuadro"); se corrigieron frases heredadas del E1 que mencionaban GPS y clases.
+- **Carpeta de entrega `Entregable 2/`**: `paper-entregable-2.pdf` (copia del PDF de la raíz; recompilar y volver a copiar si cambia el .tex), `Entregable2_codigo.ipynb` (todo `src/` unificado, ejecutado con salidas; se regenera con un constructor a partir de `src/*.py`), `requirements.txt` y `README.md`. Las salidas del notebook van a `Entregable 2/salidas/` (ignorado en git). Verificado: reproduce todas las tablas de `resultados/` (solo cambian los tiempos medidos).
 - Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)

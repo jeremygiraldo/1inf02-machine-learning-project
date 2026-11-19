@@ -10,3 +10,7 @@ data/
 *.fdb_latexmk
 *.synctex.gz
 __pycache__/
+
+# Salidas que genera el notebook del Entregable 2
+Entregable 2/salidas/
+.ipynb_checkpoints/
