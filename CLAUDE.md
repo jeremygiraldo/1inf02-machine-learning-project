@@ -75,7 +75,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
 
 ## Entregable 2 (rama `claudia-E2`, nivel 1 hecho el 19 nov)
 - Alcance reducido por indicación del docente: solo regresión P10 → P18 con `Times.csv`; GPS, curva por k, clasificación, clustering y demo pasan a la entrega final.
-- Código: `src/01_preprocesamiento.py`, `src/features.py`, `src/04_regresion.py`; resultados en `resultados/`; paper en `paper-entregable-2.tex` (babel con `es-noshorthands` para que compile con TikZ).
+- Código: `src/01_preprocesamiento.py`, `src/features.py`, `src/04_regresion.py`; resultados en `resultados/`; paper en `Entregable 2/paper-entregable-2.tex` (babel con `es-noshorthands` para que compile con TikZ).
 - Protocolo: CV forward-chaining por días (11 días iniciales + 5 pliegues de 2 días) en 6–26 ene; prueba 27 ene–1 feb evaluada UNA vez (commit 6445b10). No volver a evaluarla.
 - Meta "80 %" del docente interpretada como R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
 - Resultado prueba: HistGB MAE 2,77 [2,29; 3,44], R² 0,76 [0,62; 0,83], ≤2 min 49 %; persistencia MAE 4,32. Meta R² no cumplida. El error se concentra el sábado 1 feb (HistGB MAE 4,61).
@@ -97,7 +97,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
   - R² por subgrupo: plantilla 168 R² 0,30 (sd 5,1) frente a sábado 0,73 (sd 11,5) → el R² depende de la varianza; la métrica principal es el MAE.
   - Semillas: la búsqueda de HistGB da 3,375–3,386 y RF 3,526–3,553 → estable.
   - Tablas con `es-tabla` (antes salían como "Cuadro"); se corrigieron frases heredadas del E1 que mencionaban GPS y clases.
-- **Carpeta de entrega `Entregable 2/`**: `paper-entregable-2.pdf` (copia del PDF de la raíz; recompilar y volver a copiar si cambia el .tex), `Entregable2_codigo.ipynb` (todo `src/` unificado, ejecutado con salidas; se regenera con un constructor a partir de `src/*.py`), `requirements.txt` y `README.md`. Las salidas del notebook van a `Entregable 2/salidas/` (ignorado en git). Verificado: reproduce todas las tablas de `resultados/` (solo cambian los tiempos medidos).
+- **Carpeta de entrega `Entregable 2/`** (fuente única del paper; en la raíz ya no hay `.tex` ni PDF): `paper-entregable-2.tex` + `figuras/` (copia de `figuras/` de la raíz + `ruta.png`; si se regeneran las figuras, volver a copiarlas), `paper-entregable-2.pdf`, `Entregable2_codigo.ipynb` (todo `src/` unificado, ejecutado con salidas), `requirements.txt` y `README.md` (incluye cómo compilar el `.tex`). Las salidas del notebook van a `Entregable 2/salidas/` (ignorado en git). Verificado: reproduce todas las tablas de `resultados/` (solo cambian los tiempos medidos). En el paper el código se cita en la rama `main` (el usuario hará el PR).
 - Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)

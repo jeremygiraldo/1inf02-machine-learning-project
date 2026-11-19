@@ -160,7 +160,7 @@ Frecuencia & 4--6 vueltas por bus y día & cada 25~s (mediana); 90\,\% bajo 68~s
 
 \begin{figure}[t]
 \centering
-\IfFileExists{ruta.png}{\includegraphics[width=\columnwidth]{ruta.png}}{\fbox{\parbox{0.9\columnwidth}{\centering\footnotesize [Insertar \texttt{ruta.png}: ruta reconstruida (muestra de 60\,000 puntos GPS) y los 18 puntos de control]}}}
+\IfFileExists{figuras/ruta.png}{\includegraphics[width=\columnwidth]{figuras/ruta.png}}{\fbox{\parbox{0.9\columnwidth}{\centering\footnotesize [Insertar \texttt{figuras/ruta.png}: ruta reconstruida (muestra de 60\,000 puntos GPS) y los 18 puntos de control]}}}
 \caption{Ruta reconstruida a partir de una muestra de 60\,000 puntos GPS (solo para visualización); cada punto de control se ubicó con la mediana de las posiciones GPS en su hora real de paso.}
 \label{fig:ruta}
 \end{figure}
@@ -469,7 +469,7 @@ Con solo los datos de control de horarios, un HistGradientBoosting ajustado con 
     \item \emph{Aleatoriedad:} semilla 42 en la búsqueda aleatoria, los modelos y el \textit{bootstrap}. Con otras semillas (0, 1 y 2), el mejor MAE de validación cruzada de la búsqueda de HistGB varía entre 3,375 y 3,386 min, y el de Random Forest, entre 3,526 y 3,553 min: las conclusiones no dependen de la semilla.
     \item \emph{Ejecución:} todo el código está unificado en el notebook \texttt{Entregable2\_codigo.ipynb} (carpeta \texttt{Entregable 2} del repositorio), que se ejecuta de principio a fin en unos 9 min y comprueba que reproduce la evaluación oficial. Los mismos pasos están también como scripts en \texttt{src/}.
     \item \emph{Salidas:} todas las tablas y figuras de este documento se generan en \texttt{resultados/} y \texttt{figuras/} (en el notebook, dentro de \texttt{salidas/}). El archivo \texttt{resultados/PRUEBA\_EVALUADA.txt} registra cuándo se evaluó la prueba y con qué \textit{commit} (\texttt{6445b10}, protocolo congelado).
-    \item \emph{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{claudia-E2}.
+    \item \emph{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{main}, carpeta \texttt{Entregable 2}.
 \end{itemize}
 \bibliographystyle{IEEEtran}
 \begin{thebibliography}{99}

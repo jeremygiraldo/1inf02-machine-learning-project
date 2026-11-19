@@ -19,7 +19,7 @@ python src/06_revision.py                  # comparación por día, descomposici
 - La prueba (27 ene – 1 feb 2025) ya se evaluó una vez (ver `resultados/PRUEBA_EVALUADA.txt`).
   El script se niega a evaluarla de nuevo salvo con `--forzar`.
 - Semilla: 42. Versiones exactas en `requirements.txt` (Python 3.13).
-- Paper: `paper-entregable-2.tex` → `paper-entregable-2.pdf` (`latexmk -pdf paper-entregable-2.tex`).
+- Paper y entrega: todo en la carpeta `Entregable 2/` (PDF, `.tex` con sus figuras, notebook con todo el código y requirements). Ver `Entregable 2/README.md`, que incluye cómo compilar el `.tex`.
 
 ## Estructura
 
