@@ -2,7 +2,7 @@
 
   A. Curva de error según el punto de partida k = 5..17 (validación cruzada).
      Se reutilizan los hiperparámetros elegidos para k = 10.
-  B. Sensibilidad del umbral de "paso asignado a otra vuelta" (60 vs 30 min),
+  B. Sensibilidad del umbral de "paso con hora incompatible" (60 vs 30 min),
      comparando sobre las mismas vueltas de validación (validación cruzada).
   C. Importancia por permutación de HistGradientBoosting en los pliegues de validación.
   D. Diagnóstico de la prueba a partir de las predicciones YA guardadas por

@@ -65,9 +65,10 @@ def main(umbral: float, salida: str = "data/vueltas_limpias.csv",
     r1 = ~(S.diff(axis=1).iloc[:, 1:] >= 0).all(axis=1)
     registrar("Horario programado no creciente", "vuelta", r1.sum(), n_vueltas, "excluir vuelta")
 
-    # R2. Paso asignado a otra vuelta (|retraso| > umbral) -> NaN en esa celda.
+    # R2. Paso con hora incompatible con su vuelta (|retraso| > umbral) -> NaN en esa celda.
+    #     122 de 141 negativos tienen hora de reloj 4-6 h en vueltas que salen 16-20 h.
     r2 = (D.abs() > umbral) & ~r1.values[:, None]
-    registrar(f"Paso asignado a otra vuelta (|d| > {umbral:g} min)", "celda", r2.sum().sum(),
+    registrar(f"Paso con hora incompatible (|d| > {umbral:g} min)", "celda", r2.sum().sum(),
               n_celdas, "marcar como NaN")
     # Tramos negativos antes de aplicar R2 (para documentar que R2 los explica).
     neg_antes = ((E.ffill(axis=1).diff(axis=1).iloc[:, 1:] < 0).any(axis=1) & ~r1).sum()
@@ -118,7 +119,7 @@ def main(umbral: float, salida: str = "data/vueltas_limpias.csv",
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--umbral", type=float, default=60.0,
-                   help="|retraso| (min) por encima del cual el paso se considera de otra vuelta")
+                   help="|retraso| (min) por encima del cual la hora del paso se considera incompatible")
     p.add_argument("--salida", default="data/vueltas_limpias.csv")
     p.add_argument("--tabla", default="resultados/calidad.csv")
     a = p.parse_args()

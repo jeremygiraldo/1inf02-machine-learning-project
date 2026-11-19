@@ -1,0 +1,16 @@
+{
+  "celdas": 156,
+  "negativas": 141,
+  "positivas": 15,
+  "negativas_hora_reloj_4a6": 122,
+  "negativas_salida_16a20": 126,
+  "pct_a_2min_de_otro_paso": 13.461538461538462,
+  "pct_a_2min_referencia_azar": 32.666666666666664,
+  "puntos_mas_frecuentes": {
+    "18": 46,
+    "16": 30,
+    "11": 19,
+    "17": 17,
+    "15": 15
+  }
+}

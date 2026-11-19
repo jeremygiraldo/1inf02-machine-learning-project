@@ -85,6 +85,12 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
   - Umbral 30 vs 60 min: MAE CV 3,20 vs 3,21 en las mismas vueltas → robusto, se mantiene 60.
   - Importancia: hora de salida (seno 1,33 min) > día de la semana (0,74, solo en pliegues con sábado) > d10 (0,32); plantilla ≈ 0.
   - **Cambio de horario**: la plantilla de 170 min (salidas 16–20 h) existe solo hasta el 24 ene; desde el 27 ene la reemplaza una de 168 min que nunca aparece en desarrollo. En la prueba, HistGB MAE 3,37 en esas vueltas vs 2,64 con la de 161.
+- Revisión (`src/06_revision.py`, sin reevaluar la prueba):
+  - Comparación por día (la unidad es el día, no la vuelta): HistGB gana en 6/6 días a las líneas base y a Ridge; a RF solo en 5/6 (ΔMAE 0,20 [0,02; 0,37], prueba de signo p = 0,22). La Wilcoxon por vuelta era demasiado optimista; queda solo como referencia.
+  - Error de prueba: sábado = 11 % de vueltas y 19 % del error; plantilla 168 = 19 % y 24 %; el resto, MAE 2,30.
+  - Pasos con |d| > 60: 122/141 negativos tienen hora de reloj 4–6 h en vueltas que salen 16–20 h; **no** coinciden con pasos de otras vueltas (13 % a ≤ 2 min vs 33 % al azar) → la regla se renombró "paso con hora incompatible"; "de otra vuelta" no está verificado.
+  - Vueltas sin P18 (11 % del desarrollo): salen más tarde y algo más en sábado, pero d14/d16 son similares.
+  - R² ≥ 0,80 desde P10 "no se demuestra" (el IC de la prueba lo incluye; ningún pliegue de CV llega: máximo 0,775).
 - Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)
