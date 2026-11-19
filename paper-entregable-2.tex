@@ -48,7 +48,7 @@
 
 % ── Resumen ───────────────────────────────────────────────────────────────────
 \begin{abstract}
-Se predice, mientras un bus está en ruta, cuántos minutos llegará tarde o temprano al último punto de control de su vuelta. Se usa el registro de control de horarios del sistema de transporte inteligente de Cusco (\texttt{Times.csv}: 4\,707 vueltas de 45 buses con hora programada y real en 18 puntos de control, 6 de enero--1 de febrero de 2025). El retraso se recalcula en segundos y se aplican reglas de limpieza documentadas que conservan 4\,559 vueltas; entre ellas se corrige la interpretación de 156 pasos anómalos, que no son cruces de medianoche sino pasos asignados a otra vuelta. Desde el punto 10 se compara tres líneas base (retraso cero, persistencia y media histórica por hora) con Ridge, Random Forest y HistGradientBoosting, cuyos hiperparámetros se ajustan con validación cruzada \textit{forward-chaining} por días; la prueba (27 de enero--1 de febrero) se evalúa una sola vez. HistGradientBoosting obtiene el menor error: MAE de 2,77 min (IC 95\,\% por día: 2,29--3,44) frente a 4,32 min de la persistencia, y $R^2=0{,}76$ (0,62--0,83), con diferencias significativas frente a todos los demás modelos (Wilcoxon, $p<10^{-4}$). No se alcanza la meta de $R^2\ge0{,}80$ fijada para este entregable. El error se concentra en los sábados, cuando el retraso crece de forma brusca en la segunda mitad de la ruta.
+Se predice, mientras un bus está en ruta, cuántos minutos llegará tarde o temprano al último punto de control de su vuelta. Se usa el registro de control de horarios del sistema de transporte inteligente de Cusco (\texttt{Times.csv}: 4\,707 vueltas de 45 buses con hora programada y real en 18 puntos de control, 6 de enero--1 de febrero de 2025). El retraso se recalcula en segundos y se aplican reglas de limpieza documentadas que conservan 4\,559 vueltas; entre ellas se corrige la interpretación de 156 pasos anómalos, que no son cruces de medianoche sino pasos asignados a otra vuelta. Desde el punto 10 se compara tres líneas base (retraso cero, persistencia y media histórica por hora) con Ridge, Random Forest y HistGradientBoosting, cuyos hiperparámetros se ajustan con validación cruzada \textit{forward-chaining} por días; la prueba (27 de enero--1 de febrero) se evalúa una sola vez. HistGradientBoosting obtiene el menor error: MAE de 2,77 min (IC 95\,\% por día: 2,29--3,44) frente a 4,32 min de la persistencia, y $R^2=0{,}76$ (0,62--0,83), con diferencias significativas frente a todos los demás modelos (Wilcoxon, $p<10^{-4}$). Desde P10 no se alcanza la meta de $R^2\ge0{,}80$ fijada para este entregable; en validación cruzada se alcanza desde P14. El error se concentra en los sábados, cuando el retraso crece de forma brusca en la segunda mitad de la ruta, y en un horario de tarde que aparece por primera vez en el periodo de prueba.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -185,17 +185,33 @@ Salto de retraso $>15$ min entre puntos consecutivos & 55 vueltas (1,2\,\%) & Co
 \end{tabular}
 \end{table}
 
-\textbf{Corrección respecto al Entregable 1.} En el E1 los 156 pasos con $|d|>60$ min se atribuyeron a cruces de medianoche. Al revisarlos, ninguno está cerca de $\pm1\,440$ min, que es lo que produciría un cruce de medianoche. El 90\,\% son negativos, se concentran en P11--P18 y corresponden a vueltas nocturnas cuyo paso final tiene una hora de la mañana siguiente. Por ejemplo, una vuelta que sale a las 18:52 registra en P18 la hora 05:45:20. Se interpretan como pasos de otra vuelta asignados a una vuelta que no se cerró. El tratamiento no cambia (marcarlos como NaN), pero sí su justificación. Además, 93 pasos tienen $30<|d|\le60$ min; su tratamiento es una zona gris cuya sensibilidad se evaluará en la entrega final.
+\textbf{Corrección respecto al Entregable 1.} En el E1 los 156 pasos con $|d|>60$ min se atribuyeron a cruces de medianoche. Al revisarlos, ninguno está cerca de $\pm1\,440$ min, que es lo que produciría un cruce de medianoche. El 90\,\% son negativos, se concentran en P11--P18 y corresponden a vueltas nocturnas cuyo paso final tiene una hora de la mañana siguiente. Por ejemplo, una vuelta que sale a las 18:52 registra en P18 la hora 05:45:20. Se interpretan como pasos de otra vuelta asignados a una vuelta que no se cerró. El tratamiento no cambia (marcarlos como NaN), pero sí su justificación. Además, 93 pasos tienen $30<|d|\le60$ min y su clasificación es dudosa; la Sección~\ref{sec:umbral} muestra que bajar el umbral a 30 min no cambia los resultados.
 
-\textbf{Otros hallazgos.} (i) \texttt{difference\_time} coincide con la parte entera de (real $-$ programada) en el 100\,\% de los pasos observados, por lo que usar el retraso con segundos no cambia la información, solo su resolución. (ii) Hay 106 huecos en la numeración de vueltas, entre 3\,522 pares consecutivos del mismo bus y día. No es posible saber si esas vueltas no se hicieron o no se registraron. (iii) En P18, 229 de las 642 vueltas con plantilla de 147 min (36\,\%) llegan más de 10 min adelantadas; salen entre las 4 y las 6 h y el adelanto aparece desde P5--P6. Una hipótesis es que el tráfico de madrugada es menor que el que supone el horario, lo que podrá contrastarse con las velocidades GPS.
+\textbf{Otros hallazgos.} (i) \texttt{difference\_time} coincide con la parte entera de (real $-$ programada) en el 100\,\% de los pasos observados, por lo que usar el retraso con segundos no cambia la información, solo su resolución. (ii) Hay 106 huecos en la numeración de vueltas, entre 3\,522 pares consecutivos del mismo bus y día. No es posible saber si esas vueltas no se hicieron o no se registraron. (iii) En P18, 229 de las 642 vueltas con plantilla de 147 min (36\,\%) llegan más de 10 min adelantadas; salen entre las 4 y las 6 h y el adelanto aparece desde P5--P6. Una hipótesis es que el tráfico de madrugada es menor que el que supone el horario, lo que podrá contrastarse con las velocidades GPS. (iv) \textbf{Cambio de horario en el periodo de prueba:} la plantilla de 170 min (salidas de 16 a 20 h) aparece solo hasta el 24 de enero. Desde el 27 de enero, las salidas de esa franja usan una plantilla nueva de 168 min, que no existe en el desarrollo (234 vueltas de prueba). Se detectó durante el análisis exploratorio del nivel 2, después de evaluar la prueba, y no se modificó el modelo congelado; su efecto se analiza en la Sección~\ref{sec:desglose}.
+
+\textbf{Análisis exploratorio.} Para no guiar decisiones con la prueba, se hace solo sobre el desarrollo (3\,465 vueltas; 3\,082 con P18). La Fig.~\ref{fig:eda_punto} muestra que el retraso mediano oscila entre $-1{,}6$ y 1,6 min hasta P13, salta a 3,7 min en P14 y queda en 2,4 min en P18. La dispersión, en cambio, se abre desde P14: el p90 pasa de 7,7 min en P13 a 12,4 en P14. P17 es el punto con más pasos no registrados (27\,\%). La Fig.~\ref{fig:eda_p18} muestra que el retraso en P18 depende sobre todo de la hora de salida: es negativo de madrugada (plantilla de 147 min), y cercano a cero a mediodía. De 16 a 19 h, la mayoría de las salidas usa la plantilla de 170 min, con medianas de $-1$ a 9 min; las pocas que usan la de 161 min (8--27 vueltas por hora) llegan a medianas de 17--24 min. Por día, el sábado se separa claramente: mediana de 10,8 min frente a 1,1--2,5 min de los demás días.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figuras/eda_por_punto.pdf}
+\caption{Desarrollo (6--26 ene, 3\,465 vueltas). Arriba: retraso por punto de control (mediana, rango intercuartílico y p10--p90). Abajo: porcentaje de pasos no registrados.}
+\label{fig:eda_punto}
+\end{figure}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figuras/eda_p18.pdf}
+\caption{Retraso en P18 en el desarrollo (3\,082 vueltas). Izquierda: mediana por hora programada de salida y plantilla (se omiten horas con menos de 10 vueltas; la plantilla de 168 min no aparece en el desarrollo). Derecha: distribución por día de la semana, sin valores atípicos; el sábado se resalta.}
+\label{fig:eda_p18}
+\end{figure*}
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Metodología}
 
-\subsection{Cambios respecto al Entregable 1}
+\subsection{Cambios respecto al Entregable 1}\label{sec:cambios}
 Por indicación del docente, el alcance de este entregable se centró en que la regresión funcione bien y se midiera con rigor. Los cambios son:
 \begin{itemize}
-    \item \textbf{Tarea:} solo el experimento base del E1, que predice el retraso en P18 desde P10. La curva de error por punto de partida, la clasificación y el agrupamiento pasan a la entrega final.
+    \item \textbf{Tarea:} el experimento principal es el experimento base del E1, que predice el retraso en P18 desde P10. Como análisis complementario, se mide el error según el punto de partida ($k=5,\dots,17$) solo con validación cruzada. La clasificación y el agrupamiento pasan a la entrega final.
     \item \textbf{Datos:} solo \texttt{Times.csv}. Las variables GPS requieren unir 1,6 millones de registros por tramo, y ese archivo no forma parte del repositorio; se incorporarán en la entrega final.
     \item \textbf{Modelos:} tres líneas base y tres modelos. Se retiran SVR, Lasso, el árbol individual, el MLP y la LSTM. Con 4\,004 vueltas y datos tabulares, se espera que los ensambles de árboles sean la referencia fuerte \cite{grinsztajn2022}. Comparar muchos modelos sobre solo 6 días de prueba produciría diferencias difíciles de distinguir del ruido.
     \item \textbf{Métrica operativa:} se mantiene el porcentaje de predicciones con error $\le2$ min definido en el E1, y se añade la meta $R^2\ge0{,}80$ (Sección~II).
@@ -312,10 +328,21 @@ HistGradientBoosting & \textbf{2,77} [2,29; 3,44] & \textbf{4,04} & \textbf{0,76
 \end{tabular}
 \end{table*}
 
-\textbf{Metas.} (i) Superar a la mejor línea base en MAE: \textbf{se cumple}, y la diferencia es significativa; los IC por día de ambos modelos se solapan solo entre 3,37 y 3,44 min. (ii) $R^2\ge0{,}80$: \textbf{no se cumple} ni en validación cruzada (0,71) ni en la prueba (0,76), aunque el IC de la prueba incluye 0,80.
+\textbf{Metas.} (i) Superar a la mejor línea base en MAE: \textbf{se cumple}, y la diferencia es significativa; los IC por día de ambos modelos se solapan solo entre 3,37 y 3,44 min. (ii) $R^2\ge0{,}80$: \textbf{no se cumple} ni en validación cruzada (0,71) ni en la prueba (0,76), aunque el IC de la prueba incluye 0,80. (iii) En validación cruzada, la meta se alcanza desde P14 (Sección~\ref{sec:curva}).
 
-\subsection{Error por día}
-La Tabla~\ref{tab:dia} desglosa el MAE por día. De lunes a viernes, HistGradientBoosting tiene un MAE entre 2,10 y 3,14 min. El sábado 1 de febrero sube a 4,61 min: ese día incluso el retraso cero tiene un MAE de 15,2 min.
+\subsection{Desglose del error en la prueba}\label{sec:desglose}
+Este desglose usa las predicciones ya guardadas de la evaluación única, sin reentrenar ni reevaluar.
+\begin{itemize}
+    \item \textbf{Por día} (Tabla~\ref{tab:dia}): de lunes a viernes, HistGradientBoosting tiene un MAE entre 2,10 y 3,14 min. El sábado 1 de febrero sube a 4,61 min; ese día incluso el retraso cero tiene un MAE de 15,2 min. La Fig.~\ref{fig:pred} muestra que el modelo subestima los retrasos grandes del sábado.
+    \item \textbf{Por plantilla:} el MAE es de 2,54 min con la plantilla de 147 min (94 vueltas) y de 2,64 min con la de 161 min (650 vueltas). Con la plantilla nueva de 168 min (178 vueltas), que el modelo nunca vio, sube a 3,37 min. Aun así, sigue por debajo de la persistencia en esas mismas vueltas (4,91 min).
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\columnwidth]{figuras/prueba_real_vs_pred.pdf}
+\caption{Retraso real y predicho por HistGradientBoosting en P18 (prueba, 922 vueltas). La diagonal marca la predicción perfecta. El sábado se resalta.}
+\label{fig:pred}
+\end{figure}
 
 \begin{table}[h]
 \centering
@@ -336,12 +363,49 @@ Sáb 1 feb & 105 & 10,16 & 5,19 & 4,61\\
 \end{tabular}
 \end{table}
 
+\subsection{Error según el punto de partida (validación cruzada)}\label{sec:curva}
+Se repitió la validación cruzada para cada punto de partida $k=5,\dots,17$, con los mismos 5 pliegues y los hiperparámetros elegidos para $k=10$; la prueba no se usó (Fig.~\ref{fig:curva}).
+\begin{itemize}
+    \item HistGradientBoosting tiene el menor MAE hasta P15. Su ventaja sobre la persistencia es mayor al inicio de la ruta (3,51 frente a 6,82 min en P5) y desaparece al final (1,56 frente a 1,65 min en P16).
+    \item La mejora es gradual hasta P12 (MAE de 3,16 min) y se acelera entre P12 y P14 (2,65 min), justo donde el EDA muestra el salto del retraso.
+    \item \textbf{La meta $R^2\ge0{,}80$ se alcanza desde P14} ($R^2=0{,}81\pm0{,}04$); desde P10 el modelo se queda en $0{,}71\pm0{,}05$.
+    \item En P16--P17, Ridge supera ligeramente a HistGradientBoosting (MAE 1,48 frente a 1,56 en P16). Cerca del final, el retraso restante es casi lineal en el último retraso observado, y los hiperparámetros de HistGB se eligieron para $k=10$.
+\end{itemize}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figuras/curva_por_k.pdf}
+\caption{MAE y $R^2$ en validación cruzada según el punto de control desde el que se predice el retraso en P18 (media de 5 pliegues; banda: $\pm1$ desviación estándar). La línea vertical marca el experimento principal ($k=10$).}
+\label{fig:curva}
+\end{figure*}
+
+\subsection{Sensibilidad del umbral de limpieza}\label{sec:umbral}
+Bajar el umbral de ``paso asignado a otra vuelta'' de 60 a 30 min marca 249 pasos en lugar de 156 y deja 3\,066 vueltas de desarrollo en lugar de 3\,082. Comparado sobre las mismas vueltas de validación, el MAE de HistGB en validación cruzada pasa de 3,21 a 3,20 min. La diferencia es muy inferior a la desviación entre pliegues (0,79 min), por lo que el resultado no depende de este umbral y se mantiene el de 60 min.
+
+\subsection{Importancia de las variables}
+La importancia por permutación se mide como el aumento del MAE en los pliegues de validación al desordenar cada variable (10 repeticiones). Se muestra en la Fig.~\ref{fig:imp}.
+\begin{itemize}
+    \item La hora de salida es la variable más importante: 1,33 min su componente seno y 0,58 su componente coseno.
+    \item Le sigue el día de la semana (0,74 min), aunque con una variabilidad muy alta entre pliegues. Su importancia es de 1,04 y 2,29 min en los dos pliegues que validan un sábado (18 y 25 ene), y de 0 a 0,33 en los demás.
+    \item Entre los retrasos observados, el de P10 es el que más aporta (0,32 min).
+    \item La plantilla casi no aporta (0,004 min): su información ya está contenida en la hora de salida.
+\end{itemize}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figuras/importancia.pdf}
+\caption{Importancia por permutación de HistGradientBoosting ($k=10$): aumento medio del MAE en los 5 pliegues de validación; barras de error: $\pm1$ desviación estándar entre pliegues. Se muestran las 10 variables más importantes.}
+\label{fig:imp}
+\end{figure}
+
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Discusión}
 
 \textbf{Por qué ganan los ensambles.} La persistencia supone que el retraso de P10 se mantiene, pero en estos datos el retraso cambia en la segunda mitad de la ruta según la hora, la plantilla y el día. Los ensambles capturan esas interacciones. La ganancia frente a Ridge (3,41 $\to$ 2,77 min) indica que la relación no es lineal. Esto coincide con \cite{martyanov2026}, que también encuentra que los ensambles de árboles son la mejor opción.
 
 \textbf{Dónde falla el modelo: los sábados.} El análisis de residuos de la prueba muestra que el error se concentra el sábado 1 de febrero. Ese día el retraso mediano en P18 fue de 14,2 min, frente a 0,6--1,6 min de lunes a viernes. Además, el retraso crece de forma brusca entre P10 y P14: la media pasa de 3,6 a 14,7 min. Entre las 9 y las 14 h, el modelo predice 11--13 min cuando el retraso real medio fue de 14--21 min. Los sábados del desarrollo (11, 18 y 25 de enero) muestran la misma tendencia creciente, con medianas de 8,8, 9,5 y 14,2 min. El modelo vio solo tres sábados, de modo que el día de la semana es la variable con menos ejemplos por categoría. Una hipótesis plausible es la congestión de fin de semana en la segunda mitad de la ruta. Las velocidades GPS por tramo permitirían comprobarla.
+
+\textbf{Un horario nuevo en la prueba.} La plantilla de 168 min reemplaza a la de 170 min justo al empezar la prueba, de modo que la prueba no es solo un periodo posterior: contiene una condición que el modelo no vio. El error en esas vueltas es mayor (3,37 frente a 2,64 min), pero el modelo no colapsa. Una razón es que la hora de salida, la variable más importante, sí está representada; la plantilla en sí casi no aporta. Si los horarios cambian con frecuencia, conviene describir el horario por la franja y el tiempo programado de cada tramo, y no por la duración total.
 
 \textbf{La métrica operativa sigue baja.} Solo el 49\,\% de las predicciones tiene un error de 2 min o menos. El modelo reduce sobre todo los errores grandes (el RMSE baja de 6,15 a 4,04 min), y lo hace más que los pequeños. Desde P10, con 8 puntos de control todavía por recorrer, acertar con un margen de $\pm2$ min sigue siendo difícil.
 
@@ -351,22 +415,21 @@ Sáb 1 feb & 105 & 10,16 & 5,19 & 4,61\\
 \begin{itemize}
     \item Hay una sola ruta y 27 días: no se capturan la estacionalidad ni otras rutas.
     \item La prueba tiene 6 días y un solo sábado, por lo que los IC son aproximados y el resultado de los sábados descansa en un único día.
-    \item El periodo de prueba ya se había usado en el E1 (Sección~V-A).
-    \item Los umbrales de limpieza (60 y 15 min) son convenciones del proyecto; su sensibilidad se evaluará.
+    \item El periodo de prueba ya se había usado en el E1 (Sección~\ref{sec:cambios}).
+    \item El horario de la tarde cambió al inicio de la prueba (plantilla de 168 min no vista en el desarrollo).
+    \item La curva por punto de partida reutiliza los hiperparámetros de $k=10$, lo que puede desfavorecer a HistGB cerca del final de la ruta.
     \item No se usa el GPS.
 \end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Conclusiones y Trabajo Futuro}
 
-Con solo los datos de control de horarios, un HistGradientBoosting ajustado con validación temporal predice el retraso en el último punto de control desde la mitad de la ruta con un MAE de 2,77 min. Es un 36\,\% menos que la persistencia, y la diferencia es significativa. No se alcanzó la meta de $R^2\ge0{,}80$: se obtuvo 0,76 en la prueba y 0,71 en la validación cruzada. El principal obstáculo son los sábados, con un retraso que crece bruscamente en la segunda mitad de la ruta. La revisión de calidad corrigió la interpretación de los pasos anómalos y mostró que todos los tramos con tiempo negativo se explican por pasos asignados a otra vuelta.
+Con solo los datos de control de horarios, un HistGradientBoosting ajustado con validación temporal predice el retraso en el último punto de control desde la mitad de la ruta con un MAE de 2,77 min. Es un 36\,\% menos que la persistencia, y la diferencia es significativa. Desde P10 no se alcanzó la meta de $R^2\ge0{,}80$ (0,76 en la prueba y 0,71 en la validación cruzada); en validación cruzada se alcanza desde P14. Los principales obstáculos son los sábados, con un retraso que crece bruscamente en la segunda mitad de la ruta, y un horario de tarde que solo aparece en la prueba. La hora de salida es la variable más importante, y el resultado no depende del umbral de limpieza. La revisión de calidad corrigió la interpretación de los pasos anómalos y mostró que todos los tramos con tiempo negativo se explican por pasos asignados a otra vuelta.
 
 \textbf{Trabajo futuro (entrega final):}
 \begin{itemize}
-    \item Curva de error por punto de partida ($k=5,\dots,17$).
     \item Variables GPS por tramo, sobre todo para explicar los sábados.
-    \item Sensibilidad de los umbrales de limpieza.
-    \item Importancia por permutación.
+    \item Ajustar hiperparámetros por punto de partida y describir el horario por tramos.
     \item Clasificación de puntualidad y agrupamiento de perfiles de retraso.
     \item Demo interactiva sobre el mapa de la ruta.
 \end{itemize}
@@ -374,10 +437,10 @@ Con solo los datos de control de horarios, un HistGradientBoosting ajustado con 
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{Entorno Computacional y Reproducibilidad}
 \begin{itemize}
-    \item \textbf{Entorno:} Python 3.13 con numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1 y scipy 1.18.1 (versiones fijadas en \texttt{requirements.txt}). Linux, CPU Intel Xeon de 2,1 GHz con 4 núcleos y 15 GB de RAM. La validación cruzada y el ajuste completos tardan unos 4 min.
+    \item \textbf{Entorno:} Python 3.13 con numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1 y scipy 1.18.1 (versiones fijadas en \texttt{requirements.txt}). Linux, CPU Intel Xeon de 2,1 GHz con 4 núcleos y 15 GB de RAM. El ajuste (\texttt{04}) tarda unos 4 min y los análisis complementarios (\texttt{05}), unos 35 s.
     \item \textbf{Aleatoriedad:} semilla 42 en la búsqueda aleatoria, los modelos y el \textit{bootstrap}.
-    \item \textbf{Ejecución:} ejecutar \texttt{src/01\_preprocesamiento.py} y luego \texttt{src/04\_regresion.py} con la opción \texttt{-{}-evaluar-prueba} (instrucciones en \texttt{README.md}).
-    \item \textbf{Salidas:} todas las tablas de este documento se generan en \texttt{resultados/}. El archivo \texttt{resultados/PRUEBA\_EVALUADA.txt} registra cuándo se evaluó la prueba y con qué \textit{commit}.
+    \item \textbf{Ejecución:} en orden, \texttt{src/01\_preprocesamiento.py}, \texttt{src/02\_eda.py}, \texttt{src/04\_regresion.py} (con \texttt{-{}-evaluar-prueba} para la evaluación final) y \texttt{src/05\_analisis.py}; instrucciones en \texttt{README.md}.
+    \item \textbf{Salidas:} todas las tablas de este documento se generan en \texttt{resultados/} y las figuras en \texttt{figuras/}. El archivo \texttt{resultados/PRUEBA\_EVALUADA.txt} registra cuándo se evaluó la prueba y con qué \textit{commit}.
     \item \textbf{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{claudia-E2}.
 \end{itemize}
 \bibliographystyle{IEEEtran}

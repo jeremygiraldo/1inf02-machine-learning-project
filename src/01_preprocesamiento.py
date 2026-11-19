@@ -7,7 +7,7 @@ limpieza fijadas antes de modelar. Escribe:
   data/vueltas_limpias.csv   una fila por vuelta conservada
   resultados/calidad.csv     tabla de calidad (cuántas filas/celdas toca cada regla)
 
-Uso:  python src/01_preprocesamiento.py [--umbral 60]
+Uso:  python src/01_preprocesamiento.py [--umbral 60] [--salida ...] [--tabla ...]
 """
 import argparse
 from pathlib import Path
@@ -29,7 +29,8 @@ def separar(arreglo: str) -> list[str]:
     return arreglo.strip("{}").split(",")
 
 
-def main(umbral: float) -> None:
+def main(umbral: float, salida: str = "data/vueltas_limpias.csv",
+         tabla: str = "resultados/calidad.csv") -> None:
     T = pd.read_csv(RAIZ / "Dataset/Times.csv", dtype={"vehicle_id_id": str})
     n_vueltas, n_celdas = len(T), len(T) * N_PUNTOS
 
@@ -106,9 +107,9 @@ def main(umbral: float) -> None:
 
     (RAIZ / "data").mkdir(exist_ok=True)
     (RAIZ / "resultados").mkdir(exist_ok=True)
-    out.to_csv(RAIZ / "data/vueltas_limpias.csv", index=False)
+    out.to_csv(RAIZ / salida, index=False)
     calidad = pd.DataFrame(filas)
-    calidad.to_csv(RAIZ / "resultados/calidad.csv", index=False)
+    calidad.to_csv(RAIZ / tabla, index=False)
 
     print(f"difference_time == trunc(real - programada): {coincide:.4%} de las celdas observadas")
     print(calidad.to_string(index=False))
@@ -118,4 +119,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--umbral", type=float, default=60.0,
                    help="|retraso| (min) por encima del cual el paso se considera de otra vuelta")
-    main(p.parse_args().umbral)
+    p.add_argument("--salida", default="data/vueltas_limpias.csv")
+    p.add_argument("--tabla", default="resultados/calidad.csv")
+    a = p.parse_args()
+    main(a.umbral, a.salida, a.tabla)

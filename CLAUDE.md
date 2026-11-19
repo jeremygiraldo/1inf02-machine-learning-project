@@ -80,7 +80,12 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
 - Meta "80 %" del docente interpretada como R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
 - Resultado prueba: HistGB MAE 2,77 [2,29; 3,44], R² 0,76 [0,62; 0,83], ≤2 min 49 %; persistencia MAE 4,32. Meta R² no cumplida. El error se concentra el sábado 1 feb (HistGB MAE 4,61).
 - "Retraso de la vuelta anterior" evaluado y descartado por la regla de ablación (mejora solo 1 de 3 modelos).
-- Pendiente (nivel 2): figuras EDA, curva por k, sensibilidad de umbrales, importancia por permutación.
+- Nivel 2 (hecho): `src/02_eda.py` (EDA solo desarrollo), `src/05_analisis.py` (todo con CV salvo el desglose de la prueba, que usa predicciones ya guardadas).
+  - Curva por k (CV, hiperparámetros de k=10): HistGB R² ≥ 0,80 desde P14 (0,806); en P16–17 Ridge le gana un poco.
+  - Umbral 30 vs 60 min: MAE CV 3,20 vs 3,21 en las mismas vueltas → robusto, se mantiene 60.
+  - Importancia: hora de salida (seno 1,33 min) > día de la semana (0,74, solo en pliegues con sábado) > d10 (0,32); plantilla ≈ 0.
+  - **Cambio de horario**: la plantilla de 170 min (salidas 16–20 h) existe solo hasta el 24 ene; desde el 27 ene la reemplaza una de 168 min que nunca aparece en desarrollo. En la prueba, HistGB MAE 3,37 en esas vueltas vs 2,64 con la de 161.
+- Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)
 Las rutas a los CSV están fijas (`/mnt/user-data/...`); hay que cambiarlas a las rutas locales.
