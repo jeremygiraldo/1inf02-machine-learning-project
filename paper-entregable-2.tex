@@ -1,0 +1,530 @@
+\documentclass[conference,spanish]{IEEEtran}
+
+% ── Codificación y Lengua ──────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands]{babel}
+
+% ── Matemáticas ───────────────────────────────────────────────────────────────
+\usepackage{amsmath, amssymb}
+
+% ── Imágenes y diagramas ──────────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+
+% ── Tablas ────────────────────────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{array}
+
+% ── Hipervínculos ─────────────────────────────────────────────────────────────
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue]{hyperref}
+
+% ── Otros ─────────────────────────────────────────────────────────────────────
+\usepackage{microtype}
+\usepackage{cite}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+\title{Predicción Multihorizonte del Retraso en Puntos de Control de una Ruta de Bus Urbano en Cusco mediante Datos AVL y Aprendizaje Automático\\
+\large Entregable 2 --- Aprendizaje Automático, PUCP 2026-2}
+
+\author{
+    \IEEEauthorblockN{
+        Claudia Serpa,\;
+        Nicoll Tone,\;
+        Reynaldo Mamani,\;
+        Jeremy Aldama
+    }
+    \IEEEauthorblockA{
+        Facultad de Ciencias e Ingeniería,
+        Pontificia Universidad Católica del Perú, Lima, Perú
+    }
+}
+
+\maketitle
+
+% ── Resumen ───────────────────────────────────────────────────────────────────
+\begin{abstract}
+Se predice, mientras un bus está en ruta, cuántos minutos llegará tarde o temprano al último punto de control de su vuelta. Se usa el registro de control de horarios del sistema de transporte inteligente de Cusco (\texttt{Times.csv}: 4\,707 vueltas de 45 buses con hora programada y real en 18 puntos de control, 6 de enero--1 de febrero de 2025). El retraso se recalcula en segundos y se aplican reglas de limpieza documentadas que conservan 4\,559 vueltas; entre ellas se corrige la interpretación de 156 pasos anómalos, que no son cruces de medianoche sino pasos asignados a otra vuelta. Desde el punto 10 se compara tres líneas base (retraso cero, persistencia y media histórica por hora) con Ridge, Random Forest y HistGradientBoosting, cuyos hiperparámetros se ajustan con validación cruzada \textit{forward-chaining} por días; la prueba (27 de enero--1 de febrero) se evalúa una sola vez. HistGradientBoosting obtiene el menor error: MAE de 2,77 min (IC 95\,\% por día: 2,29--3,44) frente a 4,32 min de la persistencia, y $R^2=0{,}76$ (0,62--0,83), con diferencias significativas frente a todos los demás modelos (Wilcoxon, $p<10^{-4}$). No se alcanza la meta de $R^2\ge0{,}80$ fijada para este entregable. El error se concentra en los sábados, cuando el retraso crece de forma brusca en la segunda mitad de la ruta.
+\end{abstract}
+
+\begin{IEEEkeywords}
+transporte público, AVL, predicción de retrasos, puntualidad, gradient boosting, validación temporal, Cusco
+\end{IEEEkeywords}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Introducción y Descripción del Problema}
+
+En el transporte urbano de Cusco, la puntualidad respecto al horario programado es la principal medida de calidad que perciben los usuarios y que controlan los operadores. Las empresas ya registran, para cada vuelta, la hora programada y la hora real de paso por puntos de control, y monitorean la posición GPS de cada bus. Sin embargo, esa información se usa hoy para registrar o sancionar el retraso una vez ocurrido, no para anticiparlo.
+
+Los datos muestran que el problema es real y crece a lo largo de la ruta. En los primeros puntos de control el retraso mediano es 0 o $-1$ min (los buses salen a tiempo o adelantados), pero desde el punto 14 la mediana sube a 1--3 min y el cuartil superior llega a 6--7 min. En el último punto, el 38\,\% de las vueltas llega más de 3 min tarde y el 17\,\% llega 2 min o más adelantada.
+
+\textbf{Problema.} Dado el estado de una vuelta en un punto de control $k$ (retrasos observados hasta $k$, hora, día y vehículo; en la entrega final, también las velocidades GPS recientes), predecir el retraso en minutos en los puntos $k{+}1,\dots,18$. Formalmente, sea $d_{\ell,k}=t^{\mathrm{real}}_{\ell,k}-t^{\mathrm{prog}}_{\ell,k}$ el retraso de la vuelta $\ell$ en el punto $k$ (positivo si el bus va tarde). Se busca
+\begin{equation}
+\hat d_{\ell,j}=f_\theta\!\left(\mathbf x_{\ell,\le k},\, k,\, j\right),\qquad j>k,
+\end{equation}
+donde $\mathbf x_{\ell,\le k}$ contiene únicamente información disponible hasta el instante en que el bus pasa por $k$. La hora de llegada estimada es $\hat t^{\mathrm{real}}_{\ell,j}=t^{\mathrm{prog}}_{\ell,j}+\hat d_{\ell,j}$, la misma formulación residual sobre el horario que usan trabajos recientes de predicción de llegadas \cite{li2024arrivalnet,hu2022deepreta}. Esta tarea permite avisar al despachador o al usuario antes de que el retraso ocurra y ajustar la regulación de la flota (retener o adelantar buses).
+
+\textbf{Por qué es un problema de aprendizaje automático.} El retraso depende de forma no lineal de la hora pico, del tramo, del conductor o vehículo y de la propagación del retraso previo. Una regla fija (``el retraso actual se mantiene'') es una línea base razonable, pero los resultados preliminares de la Sección~VI muestran que deja mucho error sin explicar.
+\textbf{Organización.} La Sección~II presenta los objetivos; la III, los trabajos relacionados; la IV, el conjunto de datos y su preprocesamiento; la V, la metodología definitiva; la VI, los experimentos y resultados; la VII, la discusión y las limitaciones; la VIII, las conclusiones; y la IX, el entorno computacional para reproducir los experimentos.
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Objetivos}
+
+\textbf{Objetivo general.} Desarrollar y comparar modelos de aprendizaje automático que predigan el retraso de un bus en el último punto de control de su vuelta, a partir de los datos de control de horarios de Cusco, con un error menor que el de las líneas base operativas.
+
+\textbf{Objetivos específicos.}
+\begin{enumerate}
+    \item Limpiar \texttt{Times.csv} con reglas explícitas y cuantificadas, y caracterizar los problemas de calidad.
+    \item Entrenar y comparar tres modelos de regresión (Ridge, Random Forest y HistGradientBoosting) contra tres líneas base, con validación temporal sin fuga de información.
+    \item Reportar el error con intervalos de confianza y pruebas de significancia, y contrastarlo con dos metas fijadas antes de evaluar la prueba: superar a la mejor línea base en MAE y alcanzar $R^2\ge0{,}80$.
+    \item Para la entrega final: evaluar todos los puntos de partida, incorporar variables del GPS (\texttt{Monitoring.csv}), la clasificación de puntualidad, el agrupamiento de perfiles de retraso y la demo interactiva.
+\end{enumerate}
+La meta de $R^2\ge0{,}80$ responde a la indicación del docente de fijar un umbral de desempeño del 80\,\%. Como el enunciado no especifica la métrica, se eligió $R^2$ porque es la proporción propia de la regresión y no depende de un umbral arbitrario de error.
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Trabajos Relacionados}
+
+La predicción del tiempo de llegada y del retraso de buses es un tema amplio. La revisión de Reich et al.\ \cite{reich2019} concluye que ninguna familia de métodos domina en todos los contextos y que los resultados son poco comparables entre estudios; la de Kumar et al.\ \cite{kumar2025review} organiza los enfoques en ingenuos, basados en física y guiados por datos. Ello justifica comparar varios modelos bajo un mismo diseño experimental. La Tabla~\ref{tab:sota} resume los trabajos más cercanos.
+
+\textbf{Primeros enfoques.} Chien et al.\ \cite{chien2002} y Jeong y Rilett \cite{jeong2004} usaron redes neuronales con datos AVL y superaron a los modelos históricos y de regresión. Yu et al.\ \cite{yu2006} aplicaron máquinas de vectores de soporte con variables de segmento, hora y tiempo de recorrido previo, y en paraderos con varias rutas SVM superó a redes neuronales, $k$-NN y regresión lineal \cite{yu2011}. Achar et al.\ \cite{achar2020} propusieron un filtro de Kalman espacial que aprende correlaciones entre tramos.
+
+\textbf{Ensambles de árboles e interpretabilidad.} Martyanov et al.\ \cite{martyanov2026} es el trabajo más cercano a nuestra formulación: definen el retraso como la diferencia entre la llegada observada y la programada en cada parada, comparan Random Forest, XGBoost y CatBoost con validación cruzada temporal anidada y usan SHAP. Obtienen MAE $\approx$ 3,6 min y $R^2\approx$ 0,44, y encuentran que la hora del día y la posición en la ruta son las variables más influyentes porque el retraso se acumula a lo largo del recorrido.
+
+\textbf{Aprendizaje profundo.} Petersen et al.\ \cite{petersen2019} emplearon una ConvLSTM multisalida sobre 1,2 millones de observaciones de una línea de Copenhague y redujeron el MAE de 3,23 min (media histórica) a 1,99 min. Boudabbous et al.\ \cite{boudabbous2026} predicen retrasos en toda la red de Montreal con LSTM, XGBoost y transformers bajo validación \textit{walk-forward}; una LSTM compacta (unos 31\,000 parámetros) ofrece el mejor compromiso entre precisión y eficiencia, y usan PCA para comprimir 1\,683 variables en 83 componentes conservando el 95\,\% de la varianza. Como en datos tabulares los modelos de árboles suelen igualar o superar a las redes profundas \cite{grinsztajn2022}, y nuestro conjunto tiene del orden de 4\,000 vueltas, se espera que el MLP y la LSTM no superen necesariamente a los ensambles, y se incluyen para contrastarlo.
+
+\textbf{Otros medios y escala industrial.} En servicios de movilidad, DeeprETA de Uber \cite{hu2022deepreta} predice el residuo entre la estimación del motor de rutas y la llegada observada, y el sistema Wide-Deep-Recurrent de DiDi \cite{wang2018wdr} corrige estimaciones base con un modelo aprendido. Ambos respaldan modelar la desviación respecto a una referencia (aquí, el horario) en vez de la llegada absoluta.
+
+\textbf{Enfoques no supervisados.} Degeler et al.\ \cite{degeler2021} agrupan con $k$-means estados de operación (normal, retrasado, apelotonamiento) a partir de AVL y eligen $k$ con el coeficiente de silueta. En Cusco, Rojas-Bustamante et al.\ \cite{rojas2023} usaron aprendizaje no supervisado sobre trazas GPS de transporte público para perfilar la accesibilidad a servicios.
+
+\textbf{Antecedentes en Perú.} Un trabajo con datos de Cusco \cite{cusco2024} aplica LSTM y ConvLSTM a 1,6 millones de registros GPS de buses y reporta un MAE de 19,55 s, pero predice tiempos de viaje, no el retraso respecto al horario. En Lima, Traverso et al.\ \cite{traverso2025} entrenaron Random Forest con registros de horarios del Corredor Metropolitano y reportan $R^2=0{,}9998$; valores tan altos, junto con una partición 70/30 sin descripción temporal, motivan cautela y subrayan la necesidad de una evaluación que evite la fuga de información \cite{kaufman2012}.
+
+\textbf{Evaluación y umbrales.} En series temporales, la validación cruzada aleatoria puede inflar el desempeño \cite{bergmeir2012}; por ello se usa partición cronológica. En puntualidad de buses, una convención muy extendida considera a tiempo una llegada con hasta 1 min de adelanto y 5 min de retraso \cite{tcrp2003}; los umbrales que definen las clases de este proyecto (Sec.~V) se contrastarán con ella mediante un análisis de sensibilidad.
+
+\textbf{Brecha que se aborda.} No se encontraron trabajos que predigan el retraso en puntos de control de rutas de Cusco, una ciudad con topografía y operación (puntos con horario fijo y sanciones por adelanto) distintas a las estudiadas. Además, se combina el registro de control de horarios con las velocidades GPS de la misma vuelta.
+
+\begin{table*}[t]
+\centering
+\caption{Resumen de trabajos relacionados}
+\label{tab:sota}
+\footnotesize
+\begin{tabular}{@{}p{3.4cm}p{4.3cm}p{4.0cm}p{4.9cm}@{}}
+\toprule
+\textbf{Trabajo} & \textbf{Datos} & \textbf{Modelos} & \textbf{Resultado clave}\\
+\midrule
+Yu \textit{et al.} 2006, 2011 \cite{yu2006,yu2011} & AVL; paraderos con varias rutas & SVM, ANN, $k$-NN, regresión lineal & SVM obtiene los mejores resultados\\
+Achar \textit{et al.} 2020 \cite{achar2020} & GPS de buses, tráfico heterogéneo & Filtro de Kalman espacial & Captura correlaciones espacio-temporales por tramo\\
+Petersen \textit{et al.} 2019 \cite{petersen2019} & Línea de Copenhague; 1,2 M obs. & ConvLSTM, LSTM, media histórica & MAE 1,99 min frente a 3,23 min (media histórica)\\
+Martyanov \textit{et al.} 2026 \cite{martyanov2026} & AVL de Varsovia (retraso por parada) & RF, XGBoost, CatBoost + SHAP & MAE $\approx$ 3,6 min; RMSE $\approx$ 5,4 min; $R^2\approx$ 0,44\\
+Boudabbous \textit{et al.} 2026 \cite{boudabbous2026} & Red de Montreal; seis meses & LSTM, XGBoost, xLSTM, transformers; PCA & LSTM compacta: mejor compromiso precisión--eficiencia\\
+Degeler \textit{et al.} 2021 \cite{degeler2021} & AVL, apelotonamiento & $k$-means (silueta) & Estados: normal, retrasado, apelotonado\\
+Trabajo en Cusco \cite{cusco2024} & 1,6 M registros GPS, Cusco & LSTM, ConvLSTM & MAE 19,55 s (tiempo de viaje)\\
+Traverso \textit{et al.} 2025 \cite{traverso2025} & Corredor Metropolitano, Lima & Random Forest & $R^2=0{,}9998$ (requiere cautela)\\
+Hu \textit{et al.} 2022 \cite{hu2022deepreta} & ETA global de Uber & Transformer lineal residual & En producción; modela el residuo de la ETA base\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Descripción del Conjunto de Datos}
+
+Los dos archivos describen una sola ruta circular de 18 puntos de control, operada por 45 buses, y se pueden unir por vehículo, fecha y vuelta. Al cruzar la hora real de cada punto de control con el GPS más cercano ($\pm$60~s) se emparejó el 99,2\,\% de los pasos, y en el 99,1\,\% la vuelta coincide en ambos archivos. La Tabla~\ref{tab:datasets} resume ambos archivos.
+
+\begin{table}[h]
+\centering
+\caption{Resumen de los archivos de datos}
+\label{tab:datasets}
+\footnotesize
+\begin{tabular}{@{}p{1.6cm}p{3.1cm}p{3.1cm}@{}}
+\toprule
+\textbf{Atributo} & \textbf{Times.csv} & \textbf{Monitoring.csv}\\
+\midrule
+Registro & 1 vuelta de un bus (18 puntos) & 1 posición GPS\\
+Cantidad & 4\,707 vueltas (84\,726 pasos) & 1\,630\,431\\
+Periodo & 6 ene--1 feb 2025 (27 días) & 1 ene--1 feb 2025 (32 días)\\
+Vehículos & 45 & 45\\
+Variables clave & hora programada, hora real y diferencia por punto; vuelta & latitud, longitud, velocidad (km/h), rumbo, vuelta\\
+Frecuencia & 4--6 vueltas por bus y día & cada 25~s (mediana); 90\,\% bajo 68~s\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Estructura de \texttt{Times.csv}.} Las columnas \texttt{start\_time}, \texttt{end\_time} y \texttt{difference\_time} son arreglos de 18 valores; la primera hora programada coincide con la hora de partida. \texttt{difference\_time} es la parte entera de (hora real $-$ hora programada) en minutos: negativo implica adelanto y positivo, retraso. Como la parte entera descarta los segundos, el retraso se recalculó a partir de \texttt{start\_time} y \texttt{end\_time}. Existen cuatro plantillas de horario (147, 161, 168 y 170 min de vuelta programada); la de 161 min cubre el 65\,\% de las vueltas.
+
+\textbf{Estructura de \texttt{Monitoring.csv}.} Cada registro contiene un identificador aleatorio, fecha, hora, vuelta, latitud, longitud, velocidad, rumbo (se asume en grados, 0--360) e identificador del vehículo.
+
+\textbf{Ubicación de los puntos de control.} Las coordenadas de los 18 puntos no se proporcionan: cada punto se ubicó con la mediana de las posiciones GPS en su hora real de paso. La ruta reconstruida sale del extremo este (P1), recorre la vía principal hacia el oeste hasta P10 y regresa al este (Fig.~\ref{fig:ruta}).
+
+\begin{figure}[t]
+\centering
+\IfFileExists{ruta.png}{\includegraphics[width=\columnwidth]{ruta.png}}{\fbox{\parbox{0.9\columnwidth}{\centering\footnotesize [Insertar \texttt{ruta.png}: ruta reconstruida (muestra de 60\,000 puntos GPS) y los 18 puntos de control]}}}
+\caption{Ruta reconstruida a partir de una muestra de 60\,000 puntos GPS; cada punto de control se ubicó con la mediana de las posiciones GPS en su hora real de paso.}
+\label{fig:ruta}
+\end{figure}
+
+\textbf{Calidad de datos.} Las reglas se fijaron antes de modelar y están implementadas en \texttt{src/01\_preprocesamiento.py}, que verifica con aserciones la estructura de los arreglos y de la salida. La Tabla~\ref{tab:calidad} cuantifica cada una. Tras la limpieza quedan 4\,559 vueltas (96,9\,\%), 4\,004 de ellas con el último punto observado; esta es la muestra para predecir el retraso en P18.
+
+\begin{table}[h]
+\centering
+\caption{Problemas de calidad en \texttt{Times.csv} y tratamiento (sobre 4\,707 vueltas y 84\,726 pasos)}
+\label{tab:calidad}
+\footnotesize
+\begin{tabular}{@{}p{2.3cm}p{2.5cm}p{2.9cm}@{}}
+\toprule
+\textbf{Problema} & \textbf{Magnitud} & \textbf{Tratamiento}\\
+\midrule
+Paso no registrado (``-'' y 00:00:00) & 7\,746 pasos (9,1\,\%) & NaN + indicador; el objetivo nunca se imputa\\
+Horario programado no creciente & 148 vueltas (3,1\,\%) & Excluir la vuelta (arreglo corrupto)\\
+Paso asignado a otra vuelta ($|d|>60$ min) & 156 pasos (0,18\,\%) en 60 vueltas & Marcar el paso como NaN\\
+Tramo con tiempo negativo & 30 vueltas antes de la regla anterior; 0 después & Excluir la vuelta (no se aplicó a ninguna)\\
+Salto de retraso $>15$ min entre puntos consecutivos & 55 vueltas (1,2\,\%) & Conservar y marcar (puede ser un incidente real)\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Corrección respecto al Entregable 1.} En el E1 los 156 pasos con $|d|>60$ min se atribuyeron a cruces de medianoche. Al revisarlos, ninguno está cerca de $\pm1\,440$ min, que es lo que produciría un cruce de medianoche. El 90\,\% son negativos, se concentran en P11--P18 y corresponden a vueltas nocturnas cuyo paso final tiene una hora de la mañana siguiente. Por ejemplo, una vuelta que sale a las 18:52 registra en P18 la hora 05:45:20. Se interpretan como pasos de otra vuelta asignados a una vuelta que no se cerró. El tratamiento no cambia (marcarlos como NaN), pero sí su justificación. Además, 93 pasos tienen $30<|d|\le60$ min; su tratamiento es una zona gris cuya sensibilidad se evaluará en la entrega final.
+
+\textbf{Otros hallazgos.} (i) \texttt{difference\_time} coincide con la parte entera de (real $-$ programada) en el 100\,\% de los pasos observados, por lo que usar el retraso con segundos no cambia la información, solo su resolución. (ii) Hay 106 huecos en la numeración de vueltas, entre 3\,522 pares consecutivos del mismo bus y día. No es posible saber si esas vueltas no se hicieron o no se registraron. (iii) En P18, 229 de las 642 vueltas con plantilla de 147 min (36\,\%) llegan más de 10 min adelantadas; salen entre las 4 y las 6 h y el adelanto aparece desde P5--P6. Una hipótesis es que el tráfico de madrugada es menor que el que supone el horario, lo que podrá contrastarse con las velocidades GPS.
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Metodología}
+
+\subsection{Cambios respecto al Entregable 1}
+Por indicación del docente, el alcance de este entregable se centró en que la regresión funcione bien y se midiera con rigor. Los cambios son:
+\begin{itemize}
+    \item \textbf{Tarea:} solo el experimento base del E1, que predice el retraso en P18 desde P10. La curva de error por punto de partida, la clasificación y el agrupamiento pasan a la entrega final.
+    \item \textbf{Datos:} solo \texttt{Times.csv}. Las variables GPS requieren unir 1,6 millones de registros por tramo, y ese archivo no forma parte del repositorio; se incorporarán en la entrega final.
+    \item \textbf{Modelos:} tres líneas base y tres modelos. Se retiran SVR, Lasso, el árbol individual, el MLP y la LSTM. Con 4\,004 vueltas y datos tabulares, se espera que los ensambles de árboles sean la referencia fuerte \cite{grinsztajn2022}. Comparar muchos modelos sobre solo 6 días de prueba produciría diferencias difíciles de distinguir del ruido.
+    \item \textbf{Métrica operativa:} se mantiene el porcentaje de predicciones con error $\le2$ min definido en el E1, y se añade la meta $R^2\ge0{,}80$ (Sección~II).
+    \item \textbf{Transparencia sobre la prueba:} los resultados preliminares del E1 ya se calcularon sobre el mismo periodo de prueba. Para no seguir usándolo, todas las decisiones de este entregable (limpieza, variables, hiperparámetros) se tomaron solo con validación cruzada dentro del periodo de desarrollo. El protocolo se congeló en un \textit{commit} antes de evaluar la prueba, y la prueba se evaluó una sola vez; el script registra la evaluación y se niega a repetirla.
+\end{itemize}
+
+\subsection{Variables}
+Todas las variables están disponibles cuando el bus pasa por P10, es decir, son causales (20 en total):
+\begin{itemize}
+    \item \textbf{Propagación:} retrasos $d_1,\dots,d_{10}$ (con NaN si el paso no se registró), último retraso observado, su variación respecto al anterior observado y número de pasos faltantes.
+    \item \textbf{Horario:} hora programada de salida (seno y coseno), plantilla (duración programada) y tiempo programado restante hasta P18.
+    \item \textbf{Calendario y operación:} día de la semana, número de vuelta del día y vehículo.
+\end{itemize}
+Se evaluó además el \textbf{retraso final de la vuelta anterior del mismo bus}, que tiene correlación 0,35 con el objetivo. Es causal, porque en ninguna vuelta la salida programada es anterior a la llegada real de la vuelta previa. Vale NaN si hay un hueco en la numeración. La regla, fijada antes de calcularla, era incluirla solo si bajaba el MAE de validación cruzada en al menos dos de los tres modelos. Con la configuración por defecto bajó en HistGradientBoosting (3,484 $\to$ 3,466 min), pero subió en Random Forest (3,566 $\to$ 3,585) y en Ridge (3,789 $\to$ 3,798). \textbf{No se incluyó.}
+
+\subsection{Modelos}
+\begin{itemize}
+    \item \textbf{Líneas base:} retraso cero (horario perfecto); persistencia (el último retraso observado se mantiene hasta P18); media histórica del retraso en P18 por hora de salida, calculada solo con el entrenamiento.
+    \item \textbf{Ridge:} imputación por mediana con indicadores de faltante, estandarización y \textit{one-hot} del vehículo y del día.
+    \item \textbf{Random Forest} \cite{breiman2001}: imputación por mediana con indicadores; 300 árboles.
+    \item \textbf{HistGradientBoosting} (implementación de \textit{gradient boosting} con histogramas de scikit-learn, análoga a LightGBM \cite{ke2017}): maneja los NaN de forma nativa, con el vehículo y el día como variables categóricas.
+\end{itemize}
+Toda imputación, escalado y codificación está dentro de un \textit{pipeline} que se ajusta solo con los datos de entrenamiento de cada pliegue \cite{pedregosa2011,kaufman2012}.
+
+\subsection{Diseño experimental}
+\textbf{Partición.} Cada vuelta se asigna a un conjunto por su fecha de salida y nunca se divide. El desarrollo abarca del 6 al 26 de enero (21 días, 3\,082 vueltas) y la prueba, del 27 de enero al 1 de febrero (6 días de lunes a sábado, 922 vueltas).
+
+\textbf{Validación cruzada \textit{forward-chaining} por días.} Dentro del desarrollo, el primer pliegue entrena con los primeros 11 días y valida con los 2 siguientes; cada pliegue posterior añade esos 2 días al entrenamiento y valida con los 2 siguientes. Son 5 pliegues, con 1\,655--2\,836 vueltas de entrenamiento y 225--331 de validación. Así nunca se valida con días anteriores a los de entrenamiento \cite{bergmeir2012}, y la selección de hiperparámetros usa 10 días de validación en vez de los 5 previstos en el E1.
+
+\textbf{Ajuste de hiperparámetros.} Búsqueda aleatoria (\texttt{RandomizedSearchCV}) que minimiza el MAE medio de los 5 pliegues: 40 configuraciones para cada ensamble y 30 para Ridge. La Tabla~\ref{tab:hiper} muestra los espacios y los valores elegidos. Luego, cada modelo se reentrena con todo el desarrollo y se evalúa una vez en la prueba.
+
+\begin{table}[h]
+\centering
+\caption{Hiperparámetros: espacio de búsqueda y valor elegido}
+\label{tab:hiper}
+\scriptsize
+\begin{tabular}{@{}p{1.1cm}p{2.8cm}p{2.6cm}p{0.9cm}@{}}
+\toprule
+\textbf{Modelo} & \textbf{Parámetro} & \textbf{Espacio} & \textbf{Elegido}\\
+\midrule
+Ridge & $\alpha$ & log-uniforme $[10^{-3},10^{3}]$ & 1,22\\
+\midrule
+Random & \texttt{max\_depth} & \{None, 6, 10, 16\} & None\\
+Forest & \texttt{min\_samples\_leaf} & \{1, 2, 5, 10, 20\} & 5\\
+ & \texttt{max\_features} & \{0,3; 0,5; 0,8; 1,0\} & 0,8\\
+\midrule
+HistGB & \texttt{learning\_rate} & log-uniforme $[0{,}01;0{,}2]$ & 0,034\\
+ & \texttt{max\_iter} & \{100, 200, 400, 800\} & 400\\
+ & \texttt{max\_leaf\_nodes} & \{7, 15, 31, 63\} & 7\\
+ & \texttt{min\_samples\_leaf} & \{5, 10, 20, 40\} & 40\\
+ & \texttt{l2\_regularization} & log-uniforme $[10^{-3},10]$ & 0,0099\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Estabilidad de la selección.} Las 5 mejores configuraciones de cada modelo difieren en menos de 0,02 min de MAE de validación cruzada: HistGB 3,375--3,393, Random Forest 3,533--3,566 y Ridge 3,790--3,800. Esa diferencia es muy inferior a la desviación entre pliegues (alrededor de 0,9 min en los ensambles). Por eso el valor exacto elegido no es crítico. La lista completa está en \texttt{resultados/hiperparametros\_top5.csv}.
+
+\subsection{Métricas y comparación estadística}
+\begin{itemize}
+    \item \textbf{Principal:} MAE en minutos. \textbf{Complementarias:} RMSE, $R^2$ y porcentaje de predicciones con error absoluto $\le2$ min (operativa, definida en el E1).
+    \item \textbf{Intervalos de confianza del 95\,\%:} \textit{bootstrap} por día (2\,000 remuestreos de los 6 días de prueba), porque las vueltas de un mismo día no son independientes. Con solo 6 días, estos intervalos son aproximados.
+    \item \textbf{Significancia:} prueba de Wilcoxon de rangos con signo sobre los errores absolutos pareados por vuelta, entre el mejor modelo y cada alternativa.
+    \item \textbf{Variabilidad:} media y desviación estándar de las métricas en los 5 pliegues de validación cruzada.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Experimentos y Resultados}
+
+\subsection{Validación cruzada (desarrollo)}
+La Tabla~\ref{tab:cv} muestra el desempeño de las configuraciones elegidas en los 5 pliegues. El orden de los modelos es el mismo en todas las métricas. Los tres modelos superan a las tres líneas base, y HistGradientBoosting obtiene el menor MAE.
+
+\begin{table}[h]
+\centering
+\caption{Validación cruzada \textit{forward-chaining} (media $\pm$ desviación estándar en 5 pliegues)}
+\label{tab:cv}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{MAE} & \textbf{RMSE} & \textbf{$R^2$} & \textbf{$\le$2 min}\\
+\midrule
+Retraso cero & 7,28 $\pm$ 2,87 & 9,95 & $-0{,}29$ & 27\,\%\\
+Persistencia & 5,49 $\pm$ 1,58 & 7,26 & 0,31 & 29\,\%\\
+Media histórica por hora & 5,01 $\pm$ 2,32 & 6,77 & 0,41 & 32\,\%\\
+Ridge & 3,79 $\pm$ 0,72 & 5,03 & 0,66 & 34\,\%\\
+Random Forest & 3,53 $\pm$ 1,03 & 4,91 & 0,69 & 40\,\%\\
+HistGradientBoosting & \textbf{3,38} $\pm$ 0,95 & \textbf{4,69} & \textbf{0,71} & \textbf{42}\,\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evaluación final en la prueba}
+La Tabla~\ref{tab:test} muestra el resultado de la única evaluación en la prueba.
+\begin{itemize}
+    \item HistGradientBoosting reduce el MAE de la mejor línea base (persistencia) de 4,32 a 2,77 min, un 36\,\% menos. Supera a Random Forest, el segundo mejor, con $p=9\times10^{-5}$, y a los demás modelos con $p<10^{-4}$ (Wilcoxon).
+    \item El $R^2$ de la prueba (0,76) es mayor que el de la validación cruzada (0,71). Sin embargo, la diferencia está dentro de la variabilidad entre pliegues y el IC de la prueba es amplio (0,62--0,83).
+\end{itemize}
+
+\begin{table*}[t]
+\centering
+\caption{Prueba (27 ene--1 feb 2025, 922 vueltas, evaluación única). Entre corchetes, IC del 95\,\% por \textit{bootstrap} por día.}
+\label{tab:test}
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Modelo} & \textbf{MAE (min)} & \textbf{RMSE (min)} & \textbf{$R^2$} & \textbf{Error $\le$ 2 min} & \textbf{Wilcoxon vs.\ mejor}\\
+\midrule
+Retraso cero & 5,61 [4,16; 8,65] & 8,51 & $-0{,}07$ [$-0{,}28$; $-0{,}01$] & 36\,\% & $p<10^{-4}$\\
+Persistencia & 4,32 [3,37; 6,19] & 6,15 & 0,44 [0,34; 0,52] & 36\,\% & $p<10^{-4}$\\
+Media histórica por hora & 4,44 [3,55; 6,28] & 6,17 & 0,44 [0,35; 0,50] & 34\,\% & $p<10^{-4}$\\
+Ridge & 3,41 [2,97; 4,03] & 4,61 & 0,69 [0,50; 0,78] & 38\,\% & $p<10^{-4}$\\
+Random Forest & 2,97 [2,52; 3,75] & 4,32 & 0,72 [0,60; 0,79] & 48\,\% & $p=9\times10^{-5}$\\
+HistGradientBoosting & \textbf{2,77} [2,29; 3,44] & \textbf{4,04} & \textbf{0,76} [0,62; 0,83] & \textbf{49}\,\% & ---\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\textbf{Metas.} (i) Superar a la mejor línea base en MAE: \textbf{se cumple}, y la diferencia es significativa; los IC por día de ambos modelos se solapan solo entre 3,37 y 3,44 min. (ii) $R^2\ge0{,}80$: \textbf{no se cumple} ni en validación cruzada (0,71) ni en la prueba (0,76), aunque el IC de la prueba incluye 0,80.
+
+\subsection{Error por día}
+La Tabla~\ref{tab:dia} desglosa el MAE por día. De lunes a viernes, HistGradientBoosting tiene un MAE entre 2,10 y 3,14 min. El sábado 1 de febrero sube a 4,61 min: ese día incluso el retraso cero tiene un MAE de 15,2 min.
+
+\begin{table}[h]
+\centering
+\caption{MAE (min) por día de prueba}
+\label{tab:dia}
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Día} & \textbf{Vueltas} & \textbf{Persistencia} & \textbf{RF} & \textbf{HistGB}\\
+\midrule
+Lun 27 ene & 164 & 3,98 & 2,97 & 3,14\\
+Mar 28 ene & 149 & 3,20 & 2,36 & 2,10\\
+Mié 29 ene & 163 & 3,25 & 2,54 & 2,40\\
+Jue 30 ene & 174 & 3,30 & 2,46 & 2,13\\
+Vie 31 ene & 167 & 4,07 & 3,07 & 2,88\\
+Sáb 1 feb & 105 & 10,16 & 5,19 & 4,61\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Discusión}
+
+\textbf{Por qué ganan los ensambles.} La persistencia supone que el retraso de P10 se mantiene, pero en estos datos el retraso cambia en la segunda mitad de la ruta según la hora, la plantilla y el día. Los ensambles capturan esas interacciones. La ganancia frente a Ridge (3,41 $\to$ 2,77 min) indica que la relación no es lineal. Esto coincide con \cite{martyanov2026}, que también encuentra que los ensambles de árboles son la mejor opción.
+
+\textbf{Dónde falla el modelo: los sábados.} El análisis de residuos de la prueba muestra que el error se concentra el sábado 1 de febrero. Ese día el retraso mediano en P18 fue de 14,2 min, frente a 0,6--1,6 min de lunes a viernes. Además, el retraso crece de forma brusca entre P10 y P14: la media pasa de 3,6 a 14,7 min. Entre las 9 y las 14 h, el modelo predice 11--13 min cuando el retraso real medio fue de 14--21 min. Los sábados del desarrollo (11, 18 y 25 de enero) muestran la misma tendencia creciente, con medianas de 8,8, 9,5 y 14,2 min. El modelo vio solo tres sábados, de modo que el día de la semana es la variable con menos ejemplos por categoría. Una hipótesis plausible es la congestión de fin de semana en la segunda mitad de la ruta. Las velocidades GPS por tramo permitirían comprobarla.
+
+\textbf{La métrica operativa sigue baja.} Solo el 49\,\% de las predicciones tiene un error de 2 min o menos. El modelo reduce sobre todo los errores grandes (el RMSE baja de 6,15 a 4,04 min), y lo hace más que los pequeños. Desde P10, con 8 puntos de control todavía por recorrer, acertar con un margen de $\pm2$ min sigue siendo difícil.
+
+\textbf{Comparación con el E1.} En el E1, el Random Forest sin ajuste obtuvo un MAE de 2,85 min con el retraso truncado. Ahora HistGB obtiene 2,77 min con el retraso en segundos, el ajuste de hiperparámetros y las nuevas variables. Las cifras no son estrictamente comparables, porque el objetivo cambió de resolución.
+
+\textbf{Limitaciones y validez externa.}
+\begin{itemize}
+    \item Hay una sola ruta y 27 días: no se capturan la estacionalidad ni otras rutas.
+    \item La prueba tiene 6 días y un solo sábado, por lo que los IC son aproximados y el resultado de los sábados descansa en un único día.
+    \item El periodo de prueba ya se había usado en el E1 (Sección~V-A).
+    \item Los umbrales de limpieza (60 y 15 min) son convenciones del proyecto; su sensibilidad se evaluará.
+    \item No se usa el GPS.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Conclusiones y Trabajo Futuro}
+
+Con solo los datos de control de horarios, un HistGradientBoosting ajustado con validación temporal predice el retraso en el último punto de control desde la mitad de la ruta con un MAE de 2,77 min. Es un 36\,\% menos que la persistencia, y la diferencia es significativa. No se alcanzó la meta de $R^2\ge0{,}80$: se obtuvo 0,76 en la prueba y 0,71 en la validación cruzada. El principal obstáculo son los sábados, con un retraso que crece bruscamente en la segunda mitad de la ruta. La revisión de calidad corrigió la interpretación de los pasos anómalos y mostró que todos los tramos con tiempo negativo se explican por pasos asignados a otra vuelta.
+
+\textbf{Trabajo futuro (entrega final):}
+\begin{itemize}
+    \item Curva de error por punto de partida ($k=5,\dots,17$).
+    \item Variables GPS por tramo, sobre todo para explicar los sábados.
+    \item Sensibilidad de los umbrales de limpieza.
+    \item Importancia por permutación.
+    \item Clasificación de puntualidad y agrupamiento de perfiles de retraso.
+    \item Demo interactiva sobre el mapa de la ruta.
+\end{itemize}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\section{Entorno Computacional y Reproducibilidad}
+\begin{itemize}
+    \item \textbf{Entorno:} Python 3.13 con numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1 y scipy 1.18.1 (versiones fijadas en \texttt{requirements.txt}). Linux, CPU Intel Xeon de 2,1 GHz con 4 núcleos y 15 GB de RAM. La validación cruzada y el ajuste completos tardan unos 4 min.
+    \item \textbf{Aleatoriedad:} semilla 42 en la búsqueda aleatoria, los modelos y el \textit{bootstrap}.
+    \item \textbf{Ejecución:} ejecutar \texttt{src/01\_preprocesamiento.py} y luego \texttt{src/04\_regresion.py} con la opción \texttt{-{}-evaluar-prueba} (instrucciones en \texttt{README.md}).
+    \item \textbf{Salidas:} todas las tablas de este documento se generan en \texttt{resultados/}. El archivo \texttt{resultados/PRUEBA\_EVALUADA.txt} registra cuándo se evaluó la prueba y con qué \textit{commit}.
+    \item \textbf{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{claudia-E2}.
+\end{itemize}
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{99}
+
+\bibitem{reich2019}
+T.~Reich, M.~Budka, D.~Robbins, and D.~Hulbert,
+``Survey of ETA prediction methods in public transport networks,''
+arXiv:1904.05037, 2019.
+
+\bibitem{kumar2025review}
+B.~A. Kumar, R.~Singh, H.~E. Shaji, and L.~Vanajakshi,
+``Bus arrival time prediction: A comprehensive review,''
+\textit{IEEE Trans. Intell. Transp. Syst.}, vol.~26, no.~6, 2025.
+
+\bibitem{chien2002}
+S.~I.-J. Chien, Y.~Ding, and C.~Wei,
+``Dynamic bus arrival time prediction with artificial neural networks,''
+\textit{J. Transp. Eng.}, vol.~128, no.~5, pp. 429--438, 2002.
+
+\bibitem{jeong2004}
+R.~Jeong and L.~R. Rilett,
+``Bus arrival time prediction using artificial neural network model,''
+in \textit{Proc. 7th IEEE Int. Conf. Intell. Transp. Syst.}, 2004, pp. 988--993.
+
+\bibitem{yu2006}
+B.~Yu, Z.~Yang, and B.~Yao,
+``Bus arrival time prediction using support vector machines,''
+\textit{J. Intell. Transp. Syst.}, vol.~10, no.~4, pp. 151--158, 2006,
+doi: 10.1080/15472450600981009.
+
+\bibitem{yu2011}
+B.~Yu, W.~H.~K. Lam, and M.~L. Tam,
+``Bus arrival time prediction at bus stop with multiple routes,''
+\textit{Transp. Res. Part C Emerg. Technol.}, vol.~19, no.~6, pp. 1157--1170, 2011.
+
+\bibitem{achar2020}
+A.~Achar, D.~Bharathi, B.~A. Kumar, and L.~Vanajakshi,
+``Bus arrival time prediction: A spatial Kalman filter approach,''
+\textit{IEEE Trans. Intell. Transp. Syst.}, vol.~21, no.~3, pp. 1298--1307, 2020.
+
+\bibitem{petersen2019}
+N.~C. Petersen, F.~Rodrigues, and F.~C. Pereira,
+``Multi-output bus travel time prediction with convolutional LSTM neural network,''
+\textit{Expert Syst. Appl.}, vol.~120, pp. 426--435, 2019.
+
+\bibitem{martyanov2026}
+V.~Martyanov, A.~Budzy{\'n}ski, A.~Czerepicki, and M.~Koz{\l}owski,
+``Interpretable machine learning for identifying the determinants of bus delays,''
+\textit{Arch. Transp.}, vol.~77, no.~1, pp. 7--26, 2026,
+doi: 10.61089/aot2026.mnrkh112.
+
+\bibitem{boudabbous2026}
+E.~Boudabbous, M.~Karaa, L.~Sboui, J.~Montecinos, and O.~Alam,
+``Scalable transit delay prediction at city scale: A systematic approach with multi-resolution feature engineering and deep learning,''
+\textit{J. Syst. Archit.}, vol.~176, 2026; preprint arXiv:2601.18521.
+
+\bibitem{degeler2021}
+V.~Degeler, L.~Heydenrijk-Ottens, D.~Luo \textit{et al.},
+``Unsupervised approach towards analysing the public transport bunching swings formation phenomenon,''
+\textit{Public Transport}, vol.~13, pp. 533--555, 2021,
+doi: 10.1007/s12469-020-00251-z.
+
+\bibitem{rojas2023}
+L.~Rojas-Bustamante, C.~Alfaro, I.~Molero, D.~Aparicio, and M.~Nunez-del-Prado,
+``Profiling public service accessibility based on the public transport infrastructure,''
+in \textit{Information Management and Big Data (SIMBig 2022)}, CCIS vol.~1837, Springer, 2023,
+doi: 10.1007/978-3-031-35445-8\_14.
+
+\bibitem{cusco2024}
+E.~F. Carcausto-Mamani, E.~R. Rojas-Cahuana, E.~Alvarez-Mamani, and H.~Vera-Olivera,
+``Multivariable-unistep prediction of travel times in public transport buses using LSTM and convolutional LSTM,''
+in \textit{Information Management and Big Data (SIMBig 2023)}, J.~A. Lossio-Ventura \textit{et al.}, Eds., CCIS vol.~2142.
+Cham, Switzerland: Springer, 2024,
+doi: 10.1007/978-3-031-63616-5\_4.
+
+\bibitem{traverso2025}
+D.~Traverso, G.~Pacheco, and P.~Casta{\~n}eda,
+``T-RAPPI: A machine learning model for the Corredor Metropolitano,''
+in \textit{Proc. 11th Int. Conf. Vehicle Technol. Intell. Transp. Syst. (VEHITS)}, 2025, pp. 374--381,
+doi: 10.5220/0013220700003941.
+
+\bibitem{wang2018wdr}
+Z.~Wang, K.~Fu, and J.~Ye,
+``Learning to estimate the travel time,''
+in \textit{Proc. 24th ACM SIGKDD Int. Conf. Knowl. Discov. Data Min.}, 2018, pp. 858--866.
+
+\bibitem{hu2022deepreta}
+X.~Hu \textit{et al.},
+``DeeprETA: An ETA post-processing system at scale,''
+arXiv:2206.02127, 2022.
+
+\bibitem{li2024arrivalnet}
+Z.~Li, P.~Wolf, and M.~Wang,
+``ArrivalNet: Predicting city-wide bus/tram arrival time with two-dimensional temporal variation modeling,''
+arXiv:2410.14742, 2024.
+
+\bibitem{tcrp2003}
+Transportation Research Board,
+\textit{Transit Capacity and Quality of Service Manual}, 2nd ed., TCRP Report 100.
+Washington, DC, USA: TRB, 2003.
+
+\bibitem{bergmeir2012}
+C.~Bergmeir and J.~M. Ben{\'i}tez,
+``On the use of cross-validation for time series predictor evaluation,''
+\textit{Inf. Sci.}, vol.~191, pp. 192--213, 2012.
+
+\bibitem{kaufman2012}
+S.~Kaufman, S.~Rosset, C.~Perlich, and O.~Stitelman,
+``Leakage in data mining: Formulation, detection, and avoidance,''
+\textit{ACM Trans. Knowl. Discov. Data}, vol.~6, no.~4, pp. 1--21, 2012.
+
+\bibitem{grinsztajn2022}
+L.~Grinsztajn, E.~Oyallon, and G.~Varoquaux,
+``Why do tree-based models still outperform deep learning on typical tabular data?''
+in \textit{Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2022.
+
+\bibitem{breiman2001}
+L.~Breiman,
+``Random forests,''
+\textit{Mach. Learn.}, vol.~45, no.~1, pp. 5--32, 2001.
+
+\bibitem{chen2016}
+T.~Chen and C.~Guestrin,
+``XGBoost: A scalable tree boosting system,''
+in \textit{Proc. 22nd ACM SIGKDD Int. Conf. Knowl. Discov. Data Min.}, 2016, pp. 785--794.
+
+\bibitem{ke2017}
+G.~Ke \textit{et al.},
+``LightGBM: A highly efficient gradient boosting decision tree,''
+in \textit{Adv. Neural Inf. Process. Syst.}, vol.~30, 2017.
+
+\bibitem{hochreiter1997}
+S.~Hochreiter and J.~Schmidhuber,
+``Long short-term memory,''
+\textit{Neural Comput.}, vol.~9, no.~8, pp. 1735--1780, 1997.
+
+\bibitem{lundberg2017}
+S.~M. Lundberg and S.-I. Lee,
+``A unified approach to interpreting model predictions,''
+in \textit{Adv. Neural Inf. Process. Syst.}, vol.~30, 2017.
+
+\bibitem{pedregosa2011}
+F.~Pedregosa \textit{et al.},
+``Scikit-learn: Machine learning in Python,''
+\textit{J. Mach. Learn. Res.}, vol.~12, pp. 2825--2830, 2011.
+
+\end{thebibliography}
+
+\end{document}

@@ -28,7 +28,8 @@ Contexto para Claude Code. Resume el análisis y las decisiones tomadas hasta el
 
 ### Problemas de calidad y reglas de limpieza
 - Pasos no registrados: `-` en `difference_time` y `00:00:00` en `end_time`. El 35 % de las vueltas tiene al menos uno; P17 falta en el 27 %. → NaN + indicador; nunca imputar la variable objetivo.
-- Cruces de medianoche: 156 celdas con |diff| > 60 min (hasta −1 052). → marcar como NaN.
+- Pasos asignados a otra vuelta: 156 celdas con |diff| > 60 min (hasta −1 052) en 60 vueltas. **No son cruces de medianoche** (ninguna cerca de ±1440): son vueltas nocturnas con un paso de la mañana siguiente (p. ej. sale 18:52, P18 = 05:45:20). → marcar como NaN. Corregido en el E2; el E1 decía "medianoche". 93 celdas más con 30 < |d| ≤ 60 (zona gris, falta análisis de sensibilidad).
+- Tramos con tiempo negativo: 30 vueltas, todas explicadas por la regla anterior (0 tras aplicarla).
 - 148 vueltas con horario programado no creciente. → excluir.
 - GPS: filtrar `lap ≥ 1` y puntos lejos de la ruta.
 - Tras la limpieza: 4 559 vueltas; 4 004 con P18 observado.
@@ -71,6 +72,15 @@ Todos los grupos tienen el mismo dataset y `difference_time` es la etiqueta obvi
 - Identificar el vehículo por su forma de manejar.
 
 Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutilizando el pipeline; (2) mantener el retraso y diferenciar con variables del GPS + clustering de perfiles de conducción. **Decisión pendiente.**
+
+## Entregable 2 (rama `claudia-E2`, nivel 1 hecho el 19 nov)
+- Alcance reducido por indicación del docente: solo regresión P10 → P18 con `Times.csv`; GPS, curva por k, clasificación, clustering y demo pasan a la entrega final.
+- Código: `src/01_preprocesamiento.py`, `src/features.py`, `src/04_regresion.py`; resultados en `resultados/`; paper en `paper-entregable-2.tex` (babel con `es-noshorthands` para que compile con TikZ).
+- Protocolo: CV forward-chaining por días (11 días iniciales + 5 pliegues de 2 días) en 6–26 ene; prueba 27 ene–1 feb evaluada UNA vez (commit 6445b10). No volver a evaluarla.
+- Meta "80 %" del docente interpretada como R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
+- Resultado prueba: HistGB MAE 2,77 [2,29; 3,44], R² 0,76 [0,62; 0,83], ≤2 min 49 %; persistencia MAE 4,32. Meta R² no cumplida. El error se concentra el sábado 1 feb (HistGB MAE 4,61).
+- "Retraso de la vuelta anterior" evaluado y descartado por la regla de ablación (mejora solo 1 de 3 modelos).
+- Pendiente (nivel 2): figuras EDA, curva por k, sensibilidad de umbrales, importancia por permutación.
 
 ## Scripts (`scripts/`)
 Las rutas a los CSV están fijas (`/mnt/user-data/...`); hay que cambiarlas a las rutas locales.
