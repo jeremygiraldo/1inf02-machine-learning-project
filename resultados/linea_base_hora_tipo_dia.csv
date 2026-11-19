@@ -1,0 +1,8 @@
+,valor
+MAE_cv,3.9954
+MAE_cv_sd,1.0098
+R2_cv,0.5845
+MAE_prueba,3.335
+RMSE_prueba,4.7612
+R2_prueba,0.6653
+pct_err_le_2_prueba,43.3839

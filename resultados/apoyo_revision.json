@@ -1,0 +1,20 @@
+{
+  "vueltas_por_hora_min": 1,
+  "horas_con_menos_de_30": 1,
+  "vueltas_por_vehiculo_min": 39,
+  "vueltas_por_vehiculo_mediana": 70.0,
+  "vueltas_por_vehiculo_max": 91,
+  "vehiculos": 45,
+  "mae_cv_defecto": {
+    "Ridge": 3.789,
+    "Random Forest": 3.566,
+    "HistGradientBoosting": 3.484
+  },
+  "mae_cv_ajustado": {
+    "Ridge": 3.79,
+    "Random Forest": 3.533,
+    "HistGradientBoosting": 3.375
+  },
+  "entrenamiento_HistGB_s": 0.3,
+  "inferencia_ms_por_vuelta": 0.0069
+}

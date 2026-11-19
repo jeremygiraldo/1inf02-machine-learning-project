@@ -1,0 +1,7 @@
+vuelta_anterior,modelo,MAE_cv,MAE_cv_sd
+False,Ridge,3.7887,0.7188
+False,Random Forest,3.5658,1.0426
+False,HistGradientBoosting,3.4836,0.9831
+True,Ridge,3.7984,0.7292
+True,Random Forest,3.585,1.0375
+True,HistGradientBoosting,3.466,0.9662

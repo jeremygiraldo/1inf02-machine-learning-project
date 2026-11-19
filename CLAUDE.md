@@ -28,7 +28,8 @@ Contexto para Claude Code. Resume el análisis y las decisiones tomadas hasta el
 
 ### Problemas de calidad y reglas de limpieza
 - Pasos no registrados: `-` en `difference_time` y `00:00:00` en `end_time`. El 35 % de las vueltas tiene al menos uno; P17 falta en el 27 %. → NaN + indicador; nunca imputar la variable objetivo.
-- Cruces de medianoche: 156 celdas con |diff| > 60 min (hasta −1 052). → marcar como NaN.
+- Pasos asignados a otra vuelta: 156 celdas con |diff| > 60 min (hasta −1 052) en 60 vueltas. **No son cruces de medianoche** (ninguna cerca de ±1440): son vueltas nocturnas con un paso de la mañana siguiente (p. ej. sale 18:52, P18 = 05:45:20). → marcar como NaN. Corregido en el E2; el E1 decía "medianoche". 93 celdas más con 30 < |d| ≤ 60 (zona gris, falta análisis de sensibilidad).
+- Tramos con tiempo negativo: 30 vueltas, todas explicadas por la regla anterior (0 tras aplicarla).
 - 148 vueltas con horario programado no creciente. → excluir.
 - GPS: filtrar `lap ≥ 1` y puntos lejos de la ruta.
 - Tras la limpieza: 4 559 vueltas; 4 004 con P18 observado.
@@ -71,6 +72,33 @@ Todos los grupos tienen el mismo dataset y `difference_time` es la etiqueta obvi
 - Identificar el vehículo por su forma de manejar.
 
 Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutilizando el pipeline; (2) mantener el retraso y diferenciar con variables del GPS + clustering de perfiles de conducción. **Decisión pendiente.**
+
+## Entregable 2 (rama `claudia-E2`, nivel 1 hecho el 19 nov)
+- Alcance reducido por indicación del docente: solo regresión P10 → P18 con `Times.csv`; GPS, curva por k, clasificación, clustering y demo pasan a la entrega final.
+- Código: `src/01_preprocesamiento.py`, `src/features.py`, `src/04_regresion.py`; resultados en `resultados/`; paper en `Entregable 2/paper-entregable-2.tex` (babel con `es-noshorthands` para que compile con TikZ).
+- Protocolo: CV forward-chaining por días (11 días iniciales + 5 pliegues de 2 días) en 6–26 ene; prueba 27 ene–1 feb evaluada UNA vez (commit 6445b10). No volver a evaluarla.
+- Meta "80 %" del docente interpretada como R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
+- Resultado prueba: HistGB MAE 2,77 [2,29; 3,44], R² 0,76 [0,62; 0,83], ≤2 min 49 %; persistencia MAE 4,32. Meta R² no cumplida. El error se concentra el sábado 1 feb (HistGB MAE 4,61).
+- "Retraso de la vuelta anterior" evaluado y descartado por la regla de ablación (mejora solo 1 de 3 modelos).
+- Nivel 2 (hecho): `src/02_eda.py` (EDA solo desarrollo), `src/05_analisis.py` (todo con CV salvo el desglose de la prueba, que usa predicciones ya guardadas).
+  - Curva por k (CV, hiperparámetros de k=10): HistGB R² ≥ 0,80 desde P14 (0,806); en P16–17 Ridge le gana un poco.
+  - Umbral 30 vs 60 min: MAE CV 3,20 vs 3,21 en las mismas vueltas → robusto, se mantiene 60.
+  - Importancia: hora de salida (seno 1,33 min) > día de la semana (0,74, solo en pliegues con sábado) > d10 (0,32); plantilla ≈ 0.
+  - **Cambio de horario**: la plantilla de 170 min (salidas 16–20 h) existe solo hasta el 24 ene; desde el 27 ene la reemplaza una de 168 min que nunca aparece en desarrollo. En la prueba, HistGB MAE 3,37 en esas vueltas vs 2,64 con la de 161.
+- Revisión (`src/06_revision.py`, sin reevaluar la prueba):
+  - Comparación por día (la unidad es el día, no la vuelta): HistGB gana en 6/6 días a las líneas base y a Ridge; a RF solo en 5/6 (ΔMAE 0,20 [0,02; 0,37], prueba de signo p = 0,22). La Wilcoxon por vuelta era demasiado optimista; queda solo como referencia.
+  - Error de prueba: sábado = 11 % de vueltas y 19 % del error; plantilla 168 = 19 % y 24 %; el resto, MAE 2,30.
+  - Pasos con |d| > 60: 122/141 negativos tienen hora de reloj 4–6 h en vueltas que salen 16–20 h; **no** coinciden con pasos de otras vueltas (13 % a ≤ 2 min vs 33 % al azar) → la regla se renombró "paso con hora incompatible"; "de otra vuelta" no está verificado.
+  - Vueltas sin P18 (11 % del desarrollo): salen más tarde y algo más en sábado, pero d14/d16 son similares.
+  - R² ≥ 0,80 desde P10 "no se demuestra" (el IC de la prueba lo incluye; ningún pliegue de CV llega: máximo 0,775).
+- Segunda revisión:
+  - Línea base nueva, añadida después de la evaluación única: media por hora × tipo de día (lun–vie/sáb/dom). Prueba: MAE 3,34, R² 0,67. HistGB la supera en 6/6 días (+0,56 [0,35; 0,80]).
+  - Holm sobre p por bootstrap por día: todas las diferencias son significativas (RF p_Holm 0,02); con la prueba de signo, RF no lo es → no concluyente.
+  - R² por subgrupo: plantilla 168 R² 0,30 (sd 5,1) frente a sábado 0,73 (sd 11,5) → el R² depende de la varianza; la métrica principal es el MAE.
+  - Semillas: la búsqueda de HistGB da 3,375–3,386 y RF 3,526–3,553 → estable.
+  - Tablas con `es-tabla` (antes salían como "Cuadro"); se corrigieron frases heredadas del E1 que mencionaban GPS y clases.
+- **Carpeta de entrega `Entregable 2/`** (fuente única del paper; en la raíz ya no hay `.tex` ni PDF): `paper-entregable-2.tex` + `figuras/` (copia de `figuras/` de la raíz + `ruta.png`; si se regeneran las figuras, volver a copiarlas), `paper-entregable-2.pdf`, `Entregable2_codigo.ipynb` (todo `src/` unificado, ejecutado con salidas), `requirements.txt` y `README.md` (incluye cómo compilar el `.tex`). Las salidas del notebook van a `Entregable 2/salidas/` (ignorado en git). Verificado: reproduce todas las tablas de `resultados/` (solo cambian los tiempos medidos). En el paper el código se cita en la rama `main` (el usuario hará el PR).
+- Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)
 Las rutas a los CSV están fijas (`/mnt/user-data/...`); hay que cambiarlas a las rutas locales.

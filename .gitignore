@@ -1,1 +1,16 @@
 Dataset/Monitoring.csv
+
+# Datos derivados (se regeneran con src/01_preprocesamiento.py)
+data/
+# Auxiliares de LaTeX
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+__pycache__/
+
+# Salidas que genera el notebook del Entregable 2
+Entregable 2/salidas/
+.ipynb_checkpoints/

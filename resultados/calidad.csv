@@ -1,0 +1,8 @@
+regla,unidad,afectados,total,porcentaje,tratamiento
+Paso no registrado ('-' / 00:00:00),celda,7746,84726,9.14,NaN + indicador; nunca se imputa el objetivo
+Horario programado no creciente,vuelta,148,4707,3.14,excluir vuelta
+Paso con hora incompatible (|d| > 60 min),celda,156,84726,0.18,marcar como NaN
+Tiempo de tramo negativo (antes de R2: 30 vueltas),vuelta,0,4707,0.0,excluir vuelta
+Salto de retraso > 15 min,vuelta,55,4707,1.17,conservar con indicador
+Vueltas conservadas,vuelta,4559,4707,96.86,-
+Vueltas conservadas con P18 observado,vuelta,4004,4707,85.06,muestra para predecir P18

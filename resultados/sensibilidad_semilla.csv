@@ -1,0 +1,10 @@
+experimento,semilla,MAE_cv
+búsqueda HistGB,0,3.3811
+búsqueda HistGB,1,3.3808
+búsqueda HistGB,2,3.386
+búsqueda HistGB,42,3.3753
+semilla Random Forest,0,3.5399
+semilla Random Forest,1,3.5533
+semilla Random Forest,2,3.5404
+semilla Random Forest,3,3.5264
+semilla Random Forest,42,3.5333

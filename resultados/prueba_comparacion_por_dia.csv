@@ -1,0 +1,6 @@
+modelo,dif_MAE,ic_inf,ic_sup,dias_gana_HistGB,dias,p_signo_bilateral
+Retraso cero,2.8438,1.7119,5.3156,6,6,0.0312
+Persistencia,1.5454,0.9419,2.8312,6,6,0.0312
+Media histórica por hora,1.6655,0.9158,2.9907,6,6,0.0312
+Ridge,0.6388,0.3488,0.8988,6,6,0.0312
+Random Forest,0.1998,0.0232,0.3705,5,6,0.2188
