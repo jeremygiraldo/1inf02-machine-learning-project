@@ -16,5 +16,5 @@
     "HistGradientBoosting": 3.375
   },
   "entrenamiento_HistGB_s": 0.3,
-  "inferencia_ms_por_vuelta": 0.007
+  "inferencia_ms_por_vuelta": 0.0069
 }

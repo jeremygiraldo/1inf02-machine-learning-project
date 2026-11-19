@@ -9,6 +9,12 @@
   D. Pasos con |d| > 60 min: hora de reloj y coincidencia con pasos de otras vueltas.
   E. Datos de apoyo: vueltas por hora (línea base), vueltas por vehículo, efecto del ajuste
      de hiperparámetros y tiempos de entrenamiento e inferencia (solo con desarrollo).
+  F. Línea base añadida tras la revisión: media histórica por hora y tipo de día
+     (lun-vie / sáb / dom). Se evalúa en validación cruzada y en la prueba, y se declara
+     como posterior a la evaluación única (no cambia ningún modelo congelado).
+  G. Valores p por bootstrap pareado por día con corrección de Holm, y R2/MAE por subgrupo.
+  H. Sensibilidad a la semilla: búsqueda de HistGB con otras semillas y Random Forest
+     con otras semillas del modelo (solo validación cruzada).
 
 Uso: python src/06_revision.py   (después de 01, 04 y 05)
 """
@@ -20,6 +26,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import binomtest
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.metrics import r2_score
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.base import clone
 
 from features import OBJETIVO, construir
@@ -166,6 +175,106 @@ def apoyo(dev):
     return res
 
 
+# ------------------------------------------------------------------ F
+class MediaHoraTipoDia(BaseEstimator, RegressorMixin):
+    """Media del retraso en P18 por hora de salida y tipo de día (lun-vie, sáb, dom).
+
+    Si una celda tiene menos de MIN_CELDA vueltas de entrenamiento, usa la media por hora;
+    si tampoco hay, la media global.
+    """
+    MIN_CELDA = 5
+
+    def fit(self, X, y):
+        h, t = self._claves(X)
+        y = pd.Series(np.asarray(y))
+        g = y.groupby([h, t]).agg(["mean", "size"])
+        self.celda_ = g.loc[g["size"] >= self.MIN_CELDA, "mean"]
+        self.hora_ = y.groupby(h).mean()
+        self.global_ = float(y.mean())
+        return self
+
+    def predict(self, X):
+        h, t = self._claves(X)
+        celda = pd.Series(list(zip(h, t))).map(self.celda_.to_dict())
+        return celda.fillna(pd.Series(h).map(self.hora_)).fillna(self.global_).to_numpy()
+
+    @staticmethod
+    def _claves(X):
+        h = reg.MediaHistoricaHora._hora(X).to_numpy()
+        d = X["dia_semana"].to_numpy()
+        return h, np.where(d == 5, 1, np.where(d == 6, 2, 0))
+
+
+def linea_base_tipo_dia(dev, test):
+    X_dev = construir(dev, reg.K, vuelta_anterior=False)
+    pl = reg.pliegues_forward_chaining(dev.fecha)
+    cv = reg.cv_por_pliegue(MediaHoraTipoDia(), X_dev, dev[OBJETIVO], pl)
+    X_te = construir(test, reg.K, vuelta_anterior=False)
+    p = MediaHoraTipoDia().fit(X_dev, dev[OBJETIVO]).predict(X_te)
+    m = reg.metricas(test[OBJETIVO], p)
+    res = {"MAE_cv": cv.MAE.mean(), "MAE_cv_sd": cv.MAE.std(), "R2_cv": cv.R2.mean(),
+           **{f"{k}_prueba": v for k, v in m.items()}}
+    pd.Series(res).round(4).to_csv(RES / "linea_base_hora_tipo_dia.csv", header=["valor"])
+    return res, pd.Series(p, index=test.index)
+
+
+# ------------------------------------------------------------------ G
+def holm_y_subgrupos(p, df, rng, n_boot=5000):
+    err = p[MODELOS].sub(p.real, axis=0).abs()
+    dias = p.fecha.unique()
+    idx = {d: np.flatnonzero(p.fecha.to_numpy() == d) for d in dias}
+    filas = []
+    for m in [x for x in MODELOS if x != MEJOR]:
+        dif = (err[m] - err[MEJOR]).to_numpy()
+        b = np.array([dif[np.concatenate([idx[d] for d in rng.choice(dias, len(dias))])].mean()
+                      for _ in range(n_boot)])
+        # p bilateral por bootstrap (inversión del IC percentil).
+        pv = min(1.0, 2 * min((b <= 0).mean(), (b >= 0).mean()))
+        filas.append({"modelo": m, "dif_MAE": dif.mean(), "p_bootstrap": max(pv, 1 / n_boot)})
+    t = pd.DataFrame(filas).sort_values("p_bootstrap").reset_index(drop=True)
+    k = len(t)
+    t["p_holm"] = np.maximum.accumulate([min(1, (k - i) * v) for i, v in enumerate(t.p_bootstrap)])
+    t.round(4).to_csv(RES / "prueba_holm.csv", index=False)
+
+    q = p.merge(df[["id", "s1", "s18"]], on="id", validate="one_to_one")
+    q["grupo"] = np.select(
+        [pd.to_datetime(q.fecha).dt.dayofweek == 5, (q.s18 - q.s1).round() == 168],
+        ["Sábado 1 feb", "Plantilla 168 (lun-vie)"], "Resto (lun-vie)")
+    filas = []
+    for g, s in list(q.groupby("grupo")) + [("Total", q)]:
+        filas.append({"grupo": g, "vueltas": len(s), "sd_real": s.real.std(),
+                      "MAE": (s[MEJOR] - s.real).abs().mean(), "R2": r2_score(s.real, s[MEJOR])})
+    for f, s in q.groupby("fecha"):
+        filas.append({"grupo": f, "vueltas": len(s), "sd_real": s.real.std(),
+                      "MAE": (s[MEJOR] - s.real).abs().mean(), "R2": r2_score(s.real, s[MEJOR])})
+    sub = pd.DataFrame(filas)
+    sub.round(3).to_csv(RES / "prueba_r2_subgrupos.csv", index=False)
+    return t, sub
+
+
+# ------------------------------------------------------------------ H
+def semillas(dev):
+    X = construir(dev, reg.K, vuelta_anterior=False)
+    y = dev[OBJETIVO]
+    pl = reg.pliegues_forward_chaining(dev.fecha)
+    mods, esp = reg.modelos(X.columns)
+    filas = []
+    for sem in [0, 1, 2, 42]:
+        b = RandomizedSearchCV(mods["HistGradientBoosting"], esp["HistGradientBoosting"], n_iter=reg.N_ITER,
+                               cv=pl, scoring="neg_mean_absolute_error", random_state=sem, n_jobs=-1,
+                               refit=False).fit(X, y)
+        filas.append({"experimento": "búsqueda HistGB", "semilla": sem, "MAE_cv": -b.best_score_})
+    conf = json.loads((RES / "configuracion.json").read_text())
+    for sem in [0, 1, 2, 3, 42]:
+        rf = clone(mods["Random Forest"]).set_params(**conf["hiperparametros"]["Random Forest"],
+                                                     randomforestregressor__random_state=sem)
+        filas.append({"experimento": "semilla Random Forest", "semilla": sem,
+                      "MAE_cv": reg.cv_por_pliegue(rf, X, y, pl).MAE.mean()})
+    t = pd.DataFrame(filas)
+    t.round(4).to_csv(RES / "sensibilidad_semilla.csv", index=False)
+    return t
+
+
 def main():
     rng = np.random.default_rng(reg.SEMILLA)
     df = pd.read_csv(RAIZ / "data/vueltas_limpias.csv", dtype={"vehiculo": str})
@@ -178,6 +287,21 @@ def main():
     print("\nD. Pasos con |d| > 60:\n", pasos_anomalos(rng))
     dev = dev_todo[dev_todo[OBJETIVO].notna()].reset_index(drop=True)
     print("\nE. Apoyo:\n", json.dumps(apoyo(dev), indent=1, ensure_ascii=False))
+    test = df[(df.fecha >= reg.INICIO_PRUEBA) & df[OBJETIVO].notna()].reset_index(drop=True)
+    lb, pred_lb = linea_base_tipo_dia(dev, test)
+    print("\nF. Línea base hora x tipo de día:\n", {k: round(v, 3) for k, v in lb.items()})
+    assert (p.id.to_numpy() == test.id.to_numpy()).all()
+    dif = ((pred_lb - test[OBJETIVO]).abs() - (p[MEJOR] - p.real).abs()).to_numpy()
+    dias = p.fecha.unique()
+    idx = {d: np.flatnonzero(p.fecha.to_numpy() == d) for d in dias}
+    b = [dif[np.concatenate([idx[d] for d in rng.choice(dias, len(dias))])].mean() for _ in range(5000)]
+    gana = int((pd.Series(dif).groupby(p.fecha.to_numpy()).mean() > 0).sum())
+    pd.DataFrame([{"dif_MAE": dif.mean(), "ic_inf": np.quantile(b, .025), "ic_sup": np.quantile(b, .975),
+                   "dias_gana_HistGB": gana}]).round(4).to_csv(RES / "linea_base_hora_tipo_dia_vs_histgb.csv", index=False)
+    print(f"   vs HistGB: +{dif.mean():.3f} [{np.quantile(b, .025):.3f}; {np.quantile(b, .975):.3f}], gana HistGB {gana}/6 días")
+    holm, sub = holm_y_subgrupos(p, df, rng)
+    print("\nG. Holm:\n", holm.round(4).to_string(index=False), "\n", sub.round(3).to_string(index=False))
+    print("\nH. Semillas:\n", semillas(dev).round(3).to_string(index=False))
 
 
 if __name__ == "__main__":

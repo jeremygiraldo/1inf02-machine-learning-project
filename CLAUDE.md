@@ -91,6 +91,12 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
   - Pasos con |d| > 60: 122/141 negativos tienen hora de reloj 4–6 h en vueltas que salen 16–20 h; **no** coinciden con pasos de otras vueltas (13 % a ≤ 2 min vs 33 % al azar) → la regla se renombró "paso con hora incompatible"; "de otra vuelta" no está verificado.
   - Vueltas sin P18 (11 % del desarrollo): salen más tarde y algo más en sábado, pero d14/d16 son similares.
   - R² ≥ 0,80 desde P10 "no se demuestra" (el IC de la prueba lo incluye; ningún pliegue de CV llega: máximo 0,775).
+- Segunda revisión:
+  - Línea base nueva, añadida después de la evaluación única: media por hora × tipo de día (lun–vie/sáb/dom). Prueba: MAE 3,34, R² 0,67. HistGB la supera en 6/6 días (+0,56 [0,35; 0,80]).
+  - Holm sobre p por bootstrap por día: todas las diferencias son significativas (RF p_Holm 0,02); con la prueba de signo, RF no lo es → no concluyente.
+  - R² por subgrupo: plantilla 168 R² 0,30 (sd 5,1) frente a sábado 0,73 (sd 11,5) → el R² depende de la varianza; la métrica principal es el MAE.
+  - Semillas: la búsqueda de HistGB da 3,375–3,386 y RF 3,526–3,553 → estable.
+  - Tablas con `es-tabla` (antes salían como "Cuadro"); se corrigieron frases heredadas del E1 que mencionaban GPS y clases.
 - Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
 
 ## Scripts (`scripts/`)

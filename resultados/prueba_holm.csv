@@ -1,0 +1,6 @@
+modelo,dif_MAE,p_bootstrap,p_holm
+Retraso cero,2.8438,0.0002,0.001
+Persistencia,1.5454,0.0002,0.001
+Media histórica por hora,1.6655,0.0002,0.001
+Ridge,0.6388,0.0002,0.001
+Random Forest,0.1998,0.0196,0.0196
