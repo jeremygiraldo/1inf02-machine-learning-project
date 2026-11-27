@@ -33,6 +33,7 @@ python src/09_curva_k.py               # hiperparámetros por punto de partida (
 python src/10_agrupamiento.py          # agrupamiento de perfiles de retraso
 python src/12_figuras_final.py         # figuras del paper final
 python src/11_demo.py                  # genera Entrega final/demo/index.html
+python src/13_metricas_umbral.py       # % de error dentro de 2, 3 y 5 min (descriptivo, sin reevaluar la prueba)
 ```
 
 - La prueba de la entrega final ya se evaluó una vez (`resultados/PRUEBA_FINAL_EVALUADA.txt`, con la huella SHA-256 del código y los datos).
@@ -55,6 +56,7 @@ python src/11_demo.py                  # genera Entrega final/demo/index.html
 | `src/10_agrupamiento.py` | K-means y mezcla gaussiana sobre los perfiles de 18 retrasos |
 | `src/11_demo.py`, `src/demo_plantilla.html` | Demo interactiva en un solo HTML |
 | `src/12_figuras_final.py` | Figuras del paper final |
+| `src/13_metricas_umbral.py` | Porcentaje de predicciones con error ≤ 2, 3 y 5 min (prueba con predicciones guardadas; validación cruzada) |
 | `Entrega final/` | Paper final, diapositivas y demo |
 | `resultados/` | Todas las tablas del paper (CSV) y la configuración elegida |
 | `figuras/` | Figuras del paper (PDF) |

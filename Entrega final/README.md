@@ -24,6 +24,7 @@ python src/09_curva_k.py               # hiperparámetros por punto de partida (
 python src/10_agrupamiento.py          # agrupamiento de perfiles de retraso
 python src/12_figuras_final.py         # figuras
 python src/11_demo.py                  # genera demo/index.html
+python src/13_metricas_umbral.py       # % de error dentro de 2, 3 y 5 min
 ```
 
 La prueba de la entrega final ya se evaluó una vez (`resultados/PRUEBA_FINAL_EVALUADA.txt`, con la huella SHA-256 del código y los datos). `08_final.py --evaluar-prueba` se niega a repetirla salvo con `--forzar`.

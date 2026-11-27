@@ -1,0 +1,7 @@
+conjunto,modelo,pct_err_le_2,pct_err_le_3,pct_err_le_5,pct_err_le_5_sd
+prueba,Persistencia,35.79,51.19,69.2,
+prueba,Ridge,39.59,57.05,80.26,
+prueba,Random Forest,45.44,63.02,82.1,
+prueba,HistGB E2,49.35,65.08,84.38,
+prueba,HistGradientBoosting,50.11,65.94,85.79,
+validación cruzada,HistGradientBoosting,42.42,58.3,80.39,10.35

@@ -238,6 +238,9 @@ box/.style={draw, rounded corners=2pt, align=center, font=\footnotesize, minimum
 \label{fig:pipeline}
 \end{figure}
 
+\subsection{Variable objetivo}\label{sec:objetivo}
+El objetivo es $d_{\ell,18}$, el retraso de la vuelta en P18: hora real menos hora programada, en minutos con segundos. Se construye con \texttt{start\_time} (programada) y \texttt{end\_time} (real); no se usa \texttt{difference\_time} directamente porque es el mismo retraso truncado al minuto (verificado en el 100\,\% de los pasos), y el retraso con segundos tiene más resolución con el mismo significado. Se elige el retraso, y no la hora de llegada, porque es la medida que el operador controla y sanciona, y porque la llegada se recupera como hora programada más retraso predicho \cite{hu2022deepreta,wang2018wdr}. Se elige P18 porque es donde el retraso ya se acumuló (en el desarrollo, mediana de 2,4 min, desviación estándar de 8,6 y p90 de 12,8), y P10 porque a mitad de ruta quedan 8 puntos de control para actuar; la Sección~\ref{sec:curva} cuantifica cómo cambia el error con ese punto de partida. El objetivo nunca se imputa: solo las 4\,004 vueltas con P18 observado entran a la regresión, y el sesgo de excluir el resto se analiza en la Sección~\ref{sec:robustez}. Para la clasificación, el mismo retraso se convierte en tres clases (Sección~\ref{sec:clases}).
+
 \subsection{Variables}\label{sec:variables}
 Todas las variables están disponibles cuando el bus pasa por P10. El instante de decisión $t$ es la hora real de paso por P10 (si no se registró, la hora programada más el último retraso observado).
 \begin{itemize}
@@ -294,7 +297,7 @@ HistGB & \texttt{learning\_rate} & log-uniforme $[0{,}01;0{,}2]$ & 0,034\\
 
 \textbf{Uso de la prueba.} Los resultados preliminares del E1 ya se calcularon sobre el mismo periodo de prueba. Desde el E2, todas las decisiones (limpieza, variables, hiperparámetros, umbrales) se toman solo con validación cruzada. En el E2, el protocolo se congeló en un \textit{commit} (\texttt{6445b10}) y los modelos con solo el registro de horarios se evaluaron una vez. En esta entrega, los modelos nuevos se evaluaron también una sola vez; antes de hacerlo se registró la huella SHA-256 del código y los datos (\texttt{8758d774385dea67}) y el script se niega a repetir la evaluación. Los modelos del E2 no se reevaluaron: se comparan con sus predicciones guardadas. Una salvedad: la idea de modelar el estado del tramo P10--P14 surgió del análisis del E2, que incluyó el desglose del error en la prueba, así que la prueba no es completamente ciega para esta entrega.
 
-\subsection{Clasificación de puntualidad}
+\subsection{Clasificación de puntualidad}\label{sec:clases}
 La clase de la vuelta en P18 sigue la convención de TCRP \cite{tcrp2003}: adelantada si $d_{18}<-1$ min, puntual si $-1\le d_{18}\le5$ y retrasada si $d_{18}>5$. En el desarrollo, el reparto es 22\,\%, 44\,\% y 34\,\%. Desde P10, con las mismas variables y pliegues, se comparan la clase mayoritaria, la persistencia (la clase del último retraso observado), regresión logística, Random Forest y HistGradientBoosting (estos tres con pesos de clase balanceados y búsqueda aleatoria de 20--30 configuraciones que maximiza el F1 macro), y el HistGB de regresión final con sus predicciones convertidas en clase con los mismos umbrales. La métrica principal es el F1 macro, porque las tres clases importan por igual al despachador; se reportan también la exactitud balanceada y la exactitud.
 
 \subsection{Agrupamiento de perfiles de retraso}
@@ -388,7 +391,7 @@ HistGB + TR & \textbf{2,76} [2,28; 3,34] & \textbf{4,00} & \textbf{0,76} [0,62; 
 \end{tabular}
 \end{table*}
 
-\textbf{Metas.} (i) Superar a la mejor línea base en MAE: se cumple. HistGB + TR tiene menor MAE que la persistencia en los 6 días (diferencia de 1,56 min, IC 0,90--2,94; prueba de signo $p=0{,}03$) y también que la línea base por hora y tipo de día (3,34 min). (ii) $R^2\ge0{,}80$ desde P10: no se demuestra. La estimación queda por debajo en validación cruzada ($0{,}71\pm0{,}05$; ningún pliegue llega a 0,80, el máximo es 0,78) y en la prueba (0,76); con 6 días, el IC (0,62--0,84) no permite confirmarla ni descartarla.
+\textbf{Metas.} (i) Superar a la mejor línea base en MAE: se cumple. HistGB + TR tiene menor MAE que la persistencia en los 6 días (diferencia de 1,56 min, IC 0,90--2,94; prueba de signo $p=0{,}03$) y también que la línea base por hora y tipo de día (3,34 min). (ii) $R^2\ge0{,}80$ desde P10: no se demuestra. La estimación queda por debajo en validación cruzada ($0{,}71\pm0{,}05$; ningún pliegue llega a 0,80, el máximo es 0,78) y en la prueba (0,76); con 6 días, el IC (0,62--0,84) no permite confirmarla ni descartarla. (iii) Como medida complementaria del umbral del 80\,\%, calculada después de la evaluación única con las predicciones guardadas (\texttt{src/13\_metricas\_umbral.py}), el 86\,\% de las predicciones de prueba tiene un error absoluto de 5 min o menos (80\,\% en validación cruzada, con desviación de 10 puntos entre pliegues), frente al 69\,\% de la persistencia. El umbral de 5 min es el de la convención de puntualidad de TCRP \cite{tcrp2003}, no se eligió a partir de los resultados.
 
 \subsection{Comparación estadística por día}\label{sec:comparacion}
 \begin{itemize}
@@ -460,7 +463,7 @@ HistGB regresión + umbrales & \textbf{0,69} & \textbf{0,70} [0,62; 0,77] & \tex
 \end{tabular}
 \end{table}
 
-La matriz de confusión (Fig.~\ref{fig:cm}) muestra que el error grave es raro: de 251 vueltas retrasadas, ninguna se predijo adelantada, y solo 8 de 233 adelantadas se predijeron retrasadas. El modelo detecta el 80\,\% de las vueltas retrasadas (202 de 251), y cuando predice ``retrasada'' acierta en el 69\,\% de los casos. La clase más difícil es ``adelantada'': solo detecta el 52\,\%, y el resto lo predice como puntual, porque el adelanto final suele ser pequeño y cercano al umbral de $-1$ min.
+La matriz de confusión (Fig.~\ref{fig:cm}) muestra que el error grave es raro: de 251 vueltas retrasadas, ninguna se predijo adelantada, y solo 8 de 233 adelantadas se predijeron retrasadas. El modelo detecta el 80,5\,\% de las vueltas retrasadas (202 de 251), y cuando predice ``retrasada'' acierta en el 69\,\% de los casos. La exactitud global es del 70,7\,\%, por debajo del 80\,\%. La clase más difícil es ``adelantada'': solo detecta el 52\,\%, y el resto lo predice como puntual, porque el adelanto final suele ser pequeño y cercano al umbral de $-1$ min.
 
 \begin{figure}[t]
 \centering
@@ -541,7 +544,7 @@ Con los datos del sistema de transporte inteligente de Cusco, un HistGradientBoo
 \section{Entorno Computacional y Reproducibilidad}
 \begin{itemize}
     \item \emph{Entorno:} Python 3.13 con numpy 2.5.3, pandas 3.0.5, scikit-learn 1.9.1 y scipy 1.18.1 (versiones fijadas en \texttt{requirements.txt}). Los análisis de esta entrega se ejecutaron en macOS con 10 núcleos.
-    \item \emph{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{main}. Scripts en \texttt{src/}: \texttt{01} limpieza, \texttt{02} EDA, \texttt{04}--\texttt{06} regresión del E2 y su revisión, \texttt{07} variables en tiempo real, \texttt{08} ablación, ajuste, clasificación y prueba final, \texttt{09} curva por punto de partida, \texttt{10} agrupamiento, \texttt{11} demo y \texttt{12} figuras.
+    \item \emph{Código:} \url{https://github.com/jeremygiraldo/1inf02-machine-learning-project}, rama \texttt{main}. Scripts en \texttt{src/}: \texttt{01} limpieza, \texttt{02} EDA, \texttt{04}--\texttt{06} regresión del E2 y su revisión, \texttt{07} variables en tiempo real, \texttt{08} ablación, ajuste, clasificación y prueba final, \texttt{09} curva por punto de partida, \texttt{10} agrupamiento, \texttt{11} demo, \texttt{12} figuras y \texttt{13} porcentaje de error dentro de 2, 3 y 5 min.
     \item \emph{Datos:} \texttt{Times.csv} está en el repositorio; \texttt{Monitoring.csv} (121 MB) no, y debe colocarse en \texttt{Dataset/}.
     \item \emph{Aleatoriedad:} semilla 42 en las búsquedas, los modelos y el \textit{bootstrap}.
     \item \emph{Prueba:} \texttt{resultados/PRUEBA\_EVALUADA.txt} (E2, \textit{commit} \texttt{6445b10}) y \texttt{resultados/PRUEBA\_FINAL\_EVALUADA.txt} (entrega final, huella \texttt{8758d774385dea67}) registran las evaluaciones únicas; los scripts se niegan a repetirlas.

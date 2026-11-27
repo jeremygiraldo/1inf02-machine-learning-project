@@ -107,6 +107,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
 - Clasificación TCRP (adelantado < −1, retrasado > 5): el HistGB de regresión con umbrales gana en CV (F1 0,69) y en prueba (0,70 [0,62; 0,77]); persistencia 0,50. Ninguna retrasada predicha como adelantada.
 - Agrupamiento: silueta elige k = 2 (solo separa adelantados de madrugada); k = 3 añade "retraso alto" (14 %, 72 % sábados, salto P12–P14), donde HistGB tiene MAE 4,84 vs 2,26.
 - Hiperparámetros por k: cambian el MAE ≤ 0,07 min; R² ≥ 0,80 desde P14 (0,81).
+- Indicaciones del docente para la final: justificar la variable a predecir (diapositiva "variable" y Sección "Variable objetivo" del paper), énfasis en métricas y superar el 80 % (diapositiva "metas": error ≤ 5 min 86 % en prueba y 80 % en CV, `src/13`, descriptivo y posterior a la evaluación; recall de retrasadas 80,5 %; R² 0,76 y exactitud 70,7 % no llegan) y calidad de datos (diapositiva "datos").
 - Paper: `Entrega final/paper-final.tex` (compila con `tectonic`); diapositivas: `Entrega final/diapositivas.pdf` (también como artifact de Slides); demo: `Entrega final/demo/index.html`.
 
 ## Scripts (`scripts/`)
