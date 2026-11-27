@@ -1,0 +1,7 @@
+modelo,F1_macro_media,exactitud_balanceada_media,exactitud_media,F1_macro_sd
+Clase mayoritaria,0.1865,0.3333,0.3953,0.0382
+Persistencia,0.4573,0.5049,0.5235,0.0848
+Regresión logística,0.6508,0.6546,0.6751,0.0595
+Random Forest,0.6792,0.6779,0.7,0.0522
+HistGradientBoosting,0.678,0.6759,0.7051,0.0429
+HistGB regresión + umbrales,0.6857,0.6728,0.7065,0.067

@@ -1,0 +1,27 @@
+k,modelo,MAE,MAE_sd,R2,R2_sd,pct_err_le_2,parametros
+5,Ridge,4.4142,0.9925,0.5362,0.0468,30.819,{'alpha': 0.0086}
+5,HistGradientBoosting,3.5524,1.1357,0.6698,0.0871,40.9056,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+6,Ridge,4.0846,0.9015,0.5784,0.0572,35.3753,{'alpha': 0.0188}
+6,HistGradientBoosting,3.4583,1.0906,0.6914,0.0863,41.1481,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+7,Ridge,4.1088,0.9383,0.5771,0.0521,34.9656,{'alpha': 0.1767}
+7,HistGradientBoosting,3.4682,1.0957,0.6832,0.0886,42.0666,"{'l2_regularization': 1.0506, 'learning_rate': 0.0357, 'max_iter': 200, 'max_leaf_nodes': 15, 'min_samples_leaf': 40}"
+8,Ridge,4.0306,0.8924,0.5951,0.0471,35.1441,{'alpha': 3.908}
+8,HistGradientBoosting,3.4243,1.0735,0.6928,0.08,42.2758,"{'l2_regularization': 1.0506, 'learning_rate': 0.0357, 'max_iter': 200, 'max_leaf_nodes': 15, 'min_samples_leaf': 40}"
+9,Ridge,3.9516,0.7484,0.6239,0.0393,32.6643,{'alpha': 0.1767}
+9,HistGradientBoosting,3.4029,0.9599,0.7037,0.0693,41.5048,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+10,Ridge,3.7995,0.7411,0.6535,0.0461,34.8753,{'alpha': 3.908}
+10,HistGradientBoosting,3.3884,1.0016,0.7057,0.0606,42.7339,"{'l2_regularization': 1.0506, 'learning_rate': 0.0357, 'max_iter': 200, 'max_leaf_nodes': 15, 'min_samples_leaf': 40}"
+11,Ridge,3.6088,0.6206,0.6777,0.0495,35.5492,{'alpha': 3.908}
+11,HistGradientBoosting,3.2783,0.8166,0.7335,0.0348,41.3956,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+12,Ridge,3.4569,0.4643,0.6971,0.0716,37.2181,{'alpha': 17.7188}
+12,HistGradientBoosting,3.137,0.6537,0.7438,0.0233,43.8146,"{'l2_regularization': 0.0053, 'learning_rate': 0.0173, 'max_iter': 800, 'max_leaf_nodes': 15, 'min_samples_leaf': 10}"
+13,Ridge,3.0874,0.4666,0.7418,0.0755,42.1953,{'alpha': 4.0429}
+13,HistGradientBoosting,2.8313,0.5321,0.7836,0.0367,46.899,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+14,Ridge,2.7677,0.3048,0.7878,0.0738,45.6812,{'alpha': 17.7188}
+14,HistGradientBoosting,2.6661,0.3905,0.8072,0.0405,49.399,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+15,Ridge,2.7197,0.2998,0.795,0.0693,46.7097,{'alpha': 17.7188}
+15,HistGradientBoosting,2.6167,0.3373,0.818,0.0292,49.3227,"{'l2_regularization': 0.0267, 'learning_rate': 0.0232, 'max_iter': 800, 'max_leaf_nodes': 7, 'min_samples_leaf': 5}"
+16,Ridge,1.4741,0.0827,0.9253,0.0361,74.9655,{'alpha': 17.7188}
+16,HistGradientBoosting,1.4918,0.1211,0.9269,0.0246,75.7157,"{'l2_regularization': 0.0053, 'learning_rate': 0.0173, 'max_iter': 800, 'max_leaf_nodes': 15, 'min_samples_leaf': 10}"
+17,Ridge,1.1435,0.0424,0.9399,0.0435,86.2855,{'alpha': 17.7188}
+17,HistGradientBoosting,1.2432,0.0807,0.9397,0.0266,83.9224,"{'l2_regularization': 0.0053, 'learning_rate': 0.0173, 'max_iter': 800, 'max_leaf_nodes': 15, 'min_samples_leaf': 10}"

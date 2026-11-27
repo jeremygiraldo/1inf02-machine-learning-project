@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demo retraso Cusco</title>
+<style>
+:root {
+  --ink: #1B2430; --ink2: #5A6270; --line: #D8D2C4; --paper: #F6F3EC; --card: #FFFFFF;
+  --blue: #2F6690; --orange: #B4481A; --green: #3A7D44; --route: #B9B2A3; --soft: #ECE6DA;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #EDE9E0; --ink2: #A8A397; --line: #3A4250; --paper: #151A21; --card: #1D232C;
+    --blue: #6FA3CF; --orange: #E8834F; --green: #6FBF7A; --route: #4A5260; --soft: #252C36;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #EDE9E0; --ink2: #A8A397; --line: #3A4250; --paper: #151A21; --card: #1D232C;
+  --blue: #6FA3CF; --orange: #E8834F; --green: #6FBF7A; --route: #4A5260; --soft: #252C36;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 40px; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.sub { color: var(--ink2); margin: 0 0 18px; max-width: 900px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 6px 12px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+select { font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); max-width: 100%; }
+.btn { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.slider { display: flex; align-items: center; gap: 10px; flex: 1 1 320px; }
+.slider input { flex: 1; accent-color: var(--blue); }
+.slider b { min-width: 42px; font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.lbl { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink2); margin: 0 0 6px; }
+.big { font-size: 52px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.unit { font-size: 18px; font-weight: 500; color: var(--ink2); }
+.row { display: flex; gap: 14px; flex-wrap: wrap; align-items: baseline; }
+.badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #fff; }
+.c0 { background: var(--blue); } .c1 { background: var(--green); } .c2 { background: var(--orange); }
+.muted { color: var(--ink2); font-size: 13.5px; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 14px; margin-top: 8px; }
+.kv span:nth-child(even) { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
+.stack { display: grid; gap: 14px; align-content: start; }
+svg { display: block; width: 100%; height: auto; }
+.cp text { font-size: 17px; fill: var(--ink2); font-weight: 600; }
+.foot { margin-top: 16px; color: var(--ink2); font-size: 13px; }
+.reveal { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink2); }
+.hide { visibility: hidden; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .big { font-size: 42px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>¿Con cuánto retraso llegará el bus al final de la ruta?</h1>
+  <p class="sub">Vueltas reales del periodo de prueba (27 ene – 1 feb 2025) de la ruta de 18 puntos de control. Los modelos se entrenaron solo con 6–26 ene. Avanza el bus punto por punto: la predicción del retraso en P18 se actualiza con lo observado hasta ese punto.</p>
+
+  <div class="bar">
+    <div class="chips" id="dias"></div>
+    <select id="vuelta" aria-label="Vuelta"></select>
+  </div>
+  <div class="bar">
+    <button class="btn" id="play">▶ Recorrer</button>
+    <div class="slider"><span class="muted">Bus en</span><input type="range" id="k" min="1" max="18" value="10" aria-label="Punto de control actual"><b id="klbl">P10</b></div>
+    <label class="reveal"><input type="checkbox" id="ver"> Mostrar lo que pasó después</label>
+  </div>
+
+  <div class="grid">
+    <div class="stack">
+      <div class="card"><p class="lbl">Ruta y retraso observado por punto de control</p><svg id="mapa" role="img" aria-label="Mapa de la ruta"></svg></div>
+      <div class="card"><p class="lbl">Retraso (min) por punto de control</p><svg id="curva" role="img" aria-label="Retraso por punto de control"></svg></div>
+    </div>
+    <div class="stack">
+      <div class="card">
+        <p class="lbl" id="predlbl">Predicción del retraso en P18</p>
+        <div class="row"><span class="big" id="pred">—</span><span class="unit">min</span><span id="clase"></span></div>
+        <p class="muted" id="predinfo"></p>
+        <div id="realbox" class="hide"><p class="lbl" style="margin-top:12px">Retraso real en P18</p>
+          <div class="row"><span class="big" id="real" style="font-size:36px">—</span><span class="unit">min</span><span id="claser"></span></div></div>
+      </div>
+      <div class="card" id="trcard">
+        <p class="lbl">Información en tiempo real (en P10)</p>
+        <div class="kv" id="tr"></div>
+        <p class="muted" style="margin-top:8px">Solo usa datos anteriores al paso por P10: otras vueltas que ya recorrieron el tramo y GPS de los buses que van adelante.</p>
+      </div>
+      <div class="card">
+        <p class="lbl">Vuelta</p>
+        <div class="kv" id="info"></div>
+      </div>
+    </div>
+  </div>
+  <p class="foot" id="foot"></p>
+</div>
+<script>
+const DATA = /*DATOS*/null;
+const NOMBRES = ["Adelantado", "Puntual", "Retrasado"];
+const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 1) => v == null || Number.isNaN(v) ? "—" : (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d).replace(".", ",");
+const hhmm = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(Math.floor(m % 60)).padStart(2, "0")}`;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const clase = d => d < -1 ? 0 : d > 5 ? 2 : 1;
+const colorRetraso = d => d == null ? css("--route") : d < -1 ? css("--blue") : d > 5 ? css("--orange") : css("--green");
+let dia = null, lap = null, k = 10, timer = null;
+
+function porDia() {
+  const m = {};
+  DATA.laps.forEach(l => (m[l.f] = m[l.f] || []).push(l));
+  Object.values(m).forEach(v => v.sort((a, b) => a.s[0] - b.s[0]));
+  return m;
+}
+const LAPS = porDia();
+
+function initDias() {
+  const fechas = Object.keys(LAPS).sort();
+  $("dias").innerHTML = fechas.map(f => {
+    const d = new Date(f + "T12:00:00");
+    return `<button class="chip" data-f="${f}">${DIAS[d.getDay()]} ${d.getDate()}</button>`;
+  }).join("");
+  $("dias").querySelectorAll(".chip").forEach(b => b.onclick = () => selDia(b.dataset.f));
+  selDia(fechas[0]);
+}
+
+function selDia(f) {
+  dia = f;
+  $("dias").querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === f));
+  $("vuelta").innerHTML = LAPS[f].map((l, i) =>
+    `<option value="${i}">Sale ${hhmm(l.s[0])} · bus ${l.v} · plantilla ${l.pl} min</option>`).join("");
+  const def = LAPS[f].findIndex(l => l.s[0] >= 17 * 60 && l.s[0] < 18 * 60);
+  $("vuelta").value = def >= 0 ? def : 0;
+  selLap();
+}
+
+function selLap() { lap = LAPS[dia][+$("vuelta").value]; render(); }
+
+function prediccion() {
+  if (k < 5) return null;
+  if (k >= 18) return { v: lap.d[17], tipo: "real" };
+  if (k === 10 && lap.pf != null) return { v: lap.pf, tipo: "final" };
+  return { v: lap.pk[k - 5], tipo: "k" };
+}
+
+function renderMapa() {
+  const W = DATA.W, H = DATA.H, R = DATA.route, svg = $("mapa");
+  svg.setAttribute("viewBox", `-40 -40 ${W + 90} ${H + 75}`);
+  const cpk = DATA.cps[Math.min(k, 18) - 1];
+  const hecho = R.slice(0, cpk.i + 1);
+  const pts = a => a.map(p => p.join(",")).join(" ");
+  let s = `<polyline points="${pts(R)}" fill="none" stroke="${css("--route")}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += `<polyline points="${pts(hecho)}" fill="none" stroke="${css("--ink")}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" opacity=".85"/>`;
+  DATA.cps.forEach((c, j) => {
+    const vis = j < k || $("ver").checked;
+    const d = vis ? lap.d[j] : null;
+    const off = DATA.lab[j];
+    s += `<g class="cp"><circle cx="${c.x}" cy="${c.y}" r="${j + 1 === k ? 13 : 9}" fill="${vis ? colorRetraso(d) : css("--card")}" stroke="${css("--ink")}" stroke-width="${j + 1 === k ? 3 : 1.5}"/>`;
+    s += `<text x="${c.x + off[0]}" y="${c.y + off[1]}" text-anchor="${c.x > W - 80 ? "end" : c.x < 80 ? "start" : "middle"}">${off[2]}</text></g>`;
+  });
+  s += `<g transform="translate(${cpk.x},${cpk.y - 30})"><rect x="-22" y="-13" width="44" height="24" rx="6" fill="${css("--ink")}"/><text x="0" y="4" text-anchor="middle" fill="${css("--paper")}" font-size="12" font-weight="700">BUS</text><path d="M-6 11 L0 19 L6 11 Z" fill="${css("--ink")}"/></g>`;
+  const ley = [["Adelantado (< −1 min)", "--blue"], ["Puntual", "--green"], ["Retrasado (> 5 min)", "--orange"]];
+  ley.forEach(([t, c], i) => s += `<g transform="translate(${W - 250},${10 + i * 28})"><circle r="8" fill="${css(c)}"/><text x="16" y="6" font-size="18" fill="${css("--ink2")}">${t}</text></g>`);
+  svg.innerHTML = s;
+}
+
+function renderCurva() {
+  const svg = $("curva"), W = 720, H = 260, m = { l: 44, r: 16, t: 14, b: 30 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const p = prediccion();
+  const vals = lap.d.filter(v => v != null).concat(p ? [p.v + (DATA.mae[k - 5] || 0), p.v - (DATA.mae[k - 5] || 0)] : []).concat([0]);
+  let lo = Math.min(-5, ...vals), hi = Math.max(10, ...vals);
+  lo = Math.floor(lo / 5) * 5; hi = Math.ceil(hi / 5) * 5;
+  const x = j => m.l + (j - 1) / 17 * (W - m.l - m.r);
+  const y = v => m.t + (hi - v) / (hi - lo) * (H - m.t - m.b);
+  let s = "";
+  for (let v = lo; v <= hi; v += 5) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css("--line")}" stroke-width="${v === 0 ? 1.6 : 1}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="${css("--ink2")}">${v}</text>`;
+  for (let j = 1; j <= 18; j++) s += `<text x="${x(j)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="${j === k ? css("--ink") : css("--ink2")}" font-weight="${j === k ? 700 : 400}">P${j}</text>`;
+  s += `<line x1="${x(k)}" x2="${x(k)}" y1="${m.t}" y2="${H - m.b}" stroke="${css("--ink2")}" stroke-dasharray="4 4"/>`;
+  const linea = (desde, hasta, color, dash) => {
+    let d = "", pen = false;
+    for (let j = desde; j <= hasta; j++) {
+      const v = lap.d[j - 1];
+      if (v == null) { pen = false; continue; }
+      d += `${pen ? "L" : "M"}${x(j)},${y(v)} `; pen = true;
+    }
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="3" ${dash ? 'stroke-dasharray="6 5"' : ""} stroke-linejoin="round"/>`;
+  };
+  if ($("ver").checked && k < 18) s += linea(k, 18, css("--ink2"), true);
+  s += linea(1, Math.min(k, 18), css("--ink"), false);
+  for (let j = 1; j <= Math.min(k, 18); j++) { const v = lap.d[j - 1]; if (v != null) s += `<circle cx="${x(j)}" cy="${y(v)}" r="3.5" fill="${css("--ink")}"/>`; }
+  if (p && p.tipo !== "real") {
+    const e = DATA.mae[k - 5];
+    s += `<rect x="${x(18) - 9}" y="${y(p.v + e)}" width="18" height="${y(p.v - e) - y(p.v + e)}" rx="4" fill="${css("--blue")}" opacity=".18"/>`;
+    s += `<circle cx="${x(18)}" cy="${y(p.v)}" r="7" fill="${css("--blue")}"/>`;
+    s += `<text x="${x(18) - 12}" y="${y(p.v) - 10}" text-anchor="end" font-size="12" font-weight="700" fill="${css("--blue")}">predicción ${fmt(p.v)}</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+function render() {
+  $("k").value = k; $("klbl").textContent = `P${k}`;
+  const p = prediccion();
+  const tr = lap.rt;
+  if (!p) {
+    $("pred").textContent = "—"; $("clase").innerHTML = "";
+    $("predlbl").textContent = "Predicción del retraso en P18";
+    $("predinfo").textContent = "Los modelos predicen desde P5: antes hay muy poca información de la vuelta.";
+  } else if (p.tipo === "real") {
+    $("predlbl").textContent = "Llegó a P18";
+    $("pred").textContent = fmt(p.v); $("clase").innerHTML = `<span class="badge c${clase(p.v)}">${NOMBRES[clase(p.v)]}</span>`;
+    $("predinfo").textContent = "Retraso real registrado en el último punto de control.";
+  } else {
+    $("predlbl").textContent = `Predicción del retraso en P18 (desde P${k})`;
+    $("pred").textContent = fmt(p.v);
+    const c = p.tipo === "final" && lap.cl != null ? lap.cl : clase(p.v);
+    $("clase").innerHTML = `<span class="badge c${c}">${NOMBRES[c]}</span>`;
+    const e = DATA.mae[k - 5].toFixed(1).replace(".", ",");
+    $("predinfo").innerHTML = p.tipo === "final"
+      ? `Modelo final (HistGB con información en tiempo real). Error medio en la prueba: ${DATA.mae_final.toFixed(2).replace(".", ",")} min. Sin tiempo real habría predicho ${fmt(lap.pe2)} min.`
+      : `HistGB entrenado para P${k}. Error medio esperado: ±${e} min (validación cruzada).`;
+  }
+  const ver = $("ver").checked || k >= 18;
+  $("realbox").classList.toggle("hide", !ver || k >= 18);
+  $("real").textContent = fmt(lap.d[17]);
+  $("claser").innerHTML = lap.d[17] != null ? `<span class="badge c${clase(lap.d[17])}">${NOMBRES[clase(lap.d[17])]}</span>` : "";
+  $("trcard").style.opacity = k >= 10 ? 1 : 0.45;
+  $("tr").innerHTML = [
+    ["Retraso ganado P10→P14 por las vueltas de los últimos 30 min", tr.g == null ? "—" : `${fmt(tr.g)} min (${tr.n})`],
+    ["Velocidad GPS de los buses entre P10 y P14 (últimos 15 min)", tr.v == null ? "—" : `${tr.v.toFixed(1).replace(".", ",")} km/h`],
+  ].map(([a, b]) => `<span>${a}</span><span>${k >= 10 ? b : "en P10"}</span>`).join("");
+  $("info").innerHTML = [
+    ["Salida programada", hhmm(lap.s[0])], ["Llegada programada a P18", hhmm(lap.s[17])],
+    ["Vehículo", lap.v], ["Plantilla de horario", `${lap.pl} min`],
+    ["Retraso observado en P" + Math.min(k, 18), fmt(lap.d[Math.min(k, 18) - 1])],
+  ].map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join("");
+  renderMapa(); renderCurva();
+}
+
+$("k").oninput = e => { k = +e.target.value; render(); };
+$("vuelta").onchange = selLap;
+$("ver").onchange = render;
+$("play").onclick = () => {
+  if (timer) { clearInterval(timer); timer = null; $("play").textContent = "▶ Recorrer"; return; }
+  k = 1; render(); $("play").textContent = "❚❚ Pausa";
+  timer = setInterval(() => { if (k >= 18) { clearInterval(timer); timer = null; $("play").textContent = "▶ Recorrer"; return; } k++; render(); }, 900);
+};
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+$("foot").textContent = DATA.pie;
+initDias();
+</script>
+</body>
+</html>

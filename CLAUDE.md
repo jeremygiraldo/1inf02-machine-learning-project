@@ -98,7 +98,16 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
   - Semillas: la búsqueda de HistGB da 3,375–3,386 y RF 3,526–3,553 → estable.
   - Tablas con `es-tabla` (antes salían como "Cuadro"); se corrigieron frases heredadas del E1 que mencionaban GPS y clases.
 - **Carpeta de entrega `Entregable 2/`** (fuente única del paper; en la raíz ya no hay `.tex` ni PDF): `paper-entregable-2.tex` + `figuras/` (copia de `figuras/` de la raíz + `ruta.png`; si se regeneran las figuras, volver a copiarlas), `paper-entregable-2.pdf`, `Entregable2_codigo.ipynb` (todo `src/` unificado, ejecutado con salidas), `requirements.txt` y `README.md` (incluye cómo compilar el `.tex`). Las salidas del notebook van a `Entregable 2/salidas/` (ignorado en git). Verificado: reproduce todas las tablas de `resultados/` (solo cambian los tiempos medidos). En el paper el código se cita en la rama `main` (el usuario hará el PR).
-- Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k.
+- Pendiente para la final: GPS, clasificación, clustering, demo, hiperparámetros por k (hecho en la entrega final, ver abajo).
+
+## Entrega final (26 nov, carpeta `Entrega final/`)
+- Enunciado (`Project_ AM-2026-2.pdf`): exposición de 15 min + 5 de preguntas (diapositivas en PDF), funcionamiento de la solución (demo) y paper final en PDF; vale 10 puntos.
+- Variables en tiempo real (`src/07`): en el instante de paso por P10, retraso ganado P10→P14 y P14→P18 por las vueltas que pasaron en los 30 min previos, y velocidad GPS de los otros buses en esos tramos (15 min). Ablación con la regla del E2: entran precedentes (3/3) y GPS adelante (2/3); GPS propio no (1/3).
+- Prueba evaluada una vez para los modelos nuevos (huella `8758d774385dea67`). No volver a evaluarla. HistGB + tiempo real: MAE 2,76 [2,28; 3,34], R² 0,76 [0,62; 0,84]; frente al HistGB del E2, empate (+0,01 [−0,06; 0,11], 3/6 días); sábado 4,61 → 4,30; Ridge 3,41 → 3,22.
+- Clasificación TCRP (adelantado < −1, retrasado > 5): el HistGB de regresión con umbrales gana en CV (F1 0,69) y en prueba (0,70 [0,62; 0,77]); persistencia 0,50. Ninguna retrasada predicha como adelantada.
+- Agrupamiento: silueta elige k = 2 (solo separa adelantados de madrugada); k = 3 añade "retraso alto" (14 %, 72 % sábados, salto P12–P14), donde HistGB tiene MAE 4,84 vs 2,26.
+- Hiperparámetros por k: cambian el MAE ≤ 0,07 min; R² ≥ 0,80 desde P14 (0,81).
+- Paper: `Entrega final/paper-final.tex` (compila con `tectonic`); diapositivas: `Entrega final/diapositivas.pdf` (también como artifact de Slides); demo: `Entrega final/demo/index.html`.
 
 ## Scripts (`scripts/`)
 Las rutas a los CSV están fijas (`/mnt/user-data/...`); hay que cambiarlas a las rutas locales.

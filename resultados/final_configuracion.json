@@ -1,0 +1,74 @@
+{
+  "k": 10,
+  "semilla": 42,
+  "grupos": [
+    "precedentes",
+    "gps_adelante"
+  ],
+  "variables": [
+    "d1",
+    "d2",
+    "d3",
+    "d4",
+    "d5",
+    "d6",
+    "d7",
+    "d8",
+    "d9",
+    "d10",
+    "ultimo_retraso",
+    "variacion",
+    "n_faltantes",
+    "hora_sin",
+    "hora_cos",
+    "plantilla",
+    "restante_prog",
+    "vuelta",
+    "dia_semana",
+    "vehiculo",
+    "prec_ganancia_10_14",
+    "prec_ganancia_14_18",
+    "prec_n_10_14",
+    "prec_n_14_18",
+    "gps_vel_10_14",
+    "gps_vel_14_18"
+  ],
+  "umbrales_clase": {
+    "adelantado": "d18 < -1.0",
+    "retrasado": "d18 > 5.0"
+  },
+  "hiperparametros_regresion": {
+    "Ridge": {
+      "ridge__alpha": 1.2173252504194043
+    },
+    "Random Forest": {
+      "randomforestregressor__min_samples_leaf": 1,
+      "randomforestregressor__max_features": 0.5,
+      "randomforestregressor__max_depth": null
+    },
+    "HistGradientBoosting": {
+      "l2_regularization": 0.009935023909063692,
+      "learning_rate": 0.03419168411765895,
+      "max_iter": 400,
+      "max_leaf_nodes": 7,
+      "min_samples_leaf": 40
+    }
+  },
+  "hiperparametros_clasificacion": {
+    "Regresión logística": {
+      "logisticregression__C": 0.033205591037519584
+    },
+    "Random Forest": {
+      "randomforestclassifier__min_samples_leaf": 5,
+      "randomforestclassifier__max_features": 0.3,
+      "randomforestclassifier__max_depth": 16
+    },
+    "HistGradientBoosting": {
+      "l2_regularization": 0.23423849847112907,
+      "learning_rate": 0.011492999300221412,
+      "max_iter": 400,
+      "max_leaf_nodes": 31,
+      "min_samples_leaf": 5
+    }
+  }
+}

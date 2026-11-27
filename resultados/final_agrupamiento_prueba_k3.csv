@@ -1,0 +1,4 @@
+,dev_pct,prueba_pct,MAE_Persistencia,MAE_HistGB E2,MAE_HistGradientBoosting,n_prueba_con_P18
+Normal,79.161,80.226,2.61,2.191,2.257,568
+Retraso alto,13.511,11.158,11.486,5.255,4.838,79
+Adelantado,7.327,8.616,6.889,2.332,2.259,61

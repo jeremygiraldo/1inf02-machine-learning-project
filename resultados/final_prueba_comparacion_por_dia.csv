@@ -1,0 +1,5 @@
+modelo,dMAE,ic_inf,ic_sup,dias_gana_b,p_signo
+HistGB E2,0.0103,-0.0553,0.1135,3,1.0
+Persistencia,1.5557,0.8972,2.9409,6,0.0312
+Ridge,0.4561,0.1277,0.702,5,0.2188
+Random Forest,0.1814,-0.0646,0.3713,5,0.2188

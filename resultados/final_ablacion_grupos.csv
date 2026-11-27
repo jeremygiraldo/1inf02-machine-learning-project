@@ -1,0 +1,13 @@
+grupo,modelo,MAE_cv
+"(ninguno, E2)",Ridge,3.7896
+"(ninguno, E2)",Random Forest,3.533
+"(ninguno, E2)",HistGradientBoosting,3.3749
+precedentes,Ridge,3.6135
+precedentes,Random Forest,3.4809
+precedentes,HistGradientBoosting,3.3557
+gps_adelante,Ridge,3.7369
+gps_adelante,Random Forest,3.5553
+gps_adelante,HistGradientBoosting,3.37
+gps_propio,Ridge,3.7721
+gps_propio,Random Forest,3.5382
+gps_propio,HistGradientBoosting,3.3757
