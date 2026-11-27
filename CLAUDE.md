@@ -77,7 +77,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
 - Alcance reducido por indicación del docente: solo regresión P10 → P18 con `Times.csv`; GPS, curva por k, clasificación, clustering y demo pasan a la entrega final.
 - Código: `src/01_preprocesamiento.py`, `src/features.py`, `src/04_regresion.py`; resultados en `resultados/`; paper en `Entregable 2/paper-entregable-2.tex` (babel con `es-noshorthands` para que compile con TikZ).
 - Protocolo: CV forward-chaining por días (11 días iniciales + 5 pliegues de 2 días) en 6–26 ene; prueba 27 ene–1 feb evaluada UNA vez (commit 6445b10). No volver a evaluarla.
-- Meta "80 %" del docente interpretada como R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
+- El 80 % es solo un umbral referencial del docente, no un requisito: no atribuirlo al docente en el paper ni en las diapositivas. Se fija como meta R² ≥ 0,80. Métrica principal MAE; operativa % |error| ≤ 2 min (del E1).
 - Resultado prueba: HistGB MAE 2,77 [2,29; 3,44], R² 0,76 [0,62; 0,83], ≤2 min 49 %; persistencia MAE 4,32. Meta R² no cumplida. El error se concentra el sábado 1 feb (HistGB MAE 4,61).
 - "Retraso de la vuelta anterior" evaluado y descartado por la regla de ablación (mejora solo 1 de 3 modelos).
 - Nivel 2 (hecho): `src/02_eda.py` (EDA solo desarrollo), `src/05_analisis.py` (todo con CV salvo el desglose de la prueba, que usa predicciones ya guardadas).
@@ -107,7 +107,7 @@ Opciones de diferenciación: (1) cambiar el objetivo a apelotonamiento, reutiliz
 - Clasificación TCRP (adelantado < −1, retrasado > 5): el HistGB de regresión con umbrales gana en CV (F1 0,69) y en prueba (0,70 [0,62; 0,77]); persistencia 0,50. Ninguna retrasada predicha como adelantada.
 - Agrupamiento: silueta elige k = 2 (solo separa adelantados de madrugada); k = 3 añade "retraso alto" (14 %, 72 % sábados, salto P12–P14), donde HistGB tiene MAE 4,84 vs 2,26.
 - Hiperparámetros por k: cambian el MAE ≤ 0,07 min; R² ≥ 0,80 desde P14 (0,81).
-- Indicaciones del docente para la final: justificar la variable a predecir (diapositiva "variable" y Sección "Variable objetivo" del paper), énfasis en métricas y superar el 80 % (diapositiva "metas": error ≤ 5 min 86 % en prueba y 80 % en CV, `src/13`, descriptivo y posterior a la evaluación; recall de retrasadas 80,5 %; R² 0,76 y exactitud 70,7 % no llegan) y calidad de datos (diapositiva "datos").
+- Indicaciones del docente para la final: justificar la variable a predecir (diapositiva "variable" y Sección "Variable objetivo" del paper), énfasis en métricas con el 80 % como referencia (diapositiva "metas": error ≤ 5 min 86 % en prueba y 80 % en CV, `src/13`, descriptivo y posterior a la evaluación; recall de retrasadas 80,5 %; R² 0,76 y exactitud 70,7 % no llegan) y calidad de datos (diapositiva "datos").
 - Paper: `Entrega final/paper-final.tex` (compila con `tectonic`); diapositivas: `Entrega final/diapositivas.pdf` (también como artifact de Slides); demo: `Entrega final/demo/index.html`.
 
 ## Scripts (`scripts/`)
